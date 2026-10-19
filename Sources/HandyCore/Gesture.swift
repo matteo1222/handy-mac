@@ -16,4 +16,6 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case drag
     /// Two pinch taps within 350 ms.
     case doubleClick
+    /// Index and middle up, moved; momentum on release.
+    case scroll
 }

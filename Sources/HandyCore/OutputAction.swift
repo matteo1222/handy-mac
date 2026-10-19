@@ -6,4 +6,6 @@ public enum OutputAction: Sendable, Equatable, Codable {
     case mouseDown(button: MouseButton, at: Point, clickCount: Int)
     case mouseUp(button: MouseButton, at: Point, clickCount: Int)
     case mouseDragged(button: MouseButton, to: Point)
+    /// Pixel scroll. Positive `dy` moves content down, positive `dx` moves it right (wheel convention).
+    case scroll(dx: Int, dy: Int, phase: ScrollPhase, momentumStart: Bool)
 }

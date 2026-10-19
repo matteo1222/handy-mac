@@ -64,6 +64,7 @@ struct HUDGallery: View {
         .make(status: .init(mode: .arming, progress: 0.8), lastAction: nil, problem: nil),
         .make(status: .init(mode: .engaged, progress: nil), lastAction: "Double click", problem: nil),
         .make(status: .init(mode: .dragging, progress: nil), lastAction: nil, problem: nil),
+        .make(status: .init(mode: .scrolling, progress: nil), lastAction: nil, problem: nil),
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: "Camera in use by another app"),
     ]
 }

@@ -48,13 +48,25 @@ public struct PointerTracker: Sendable, Equatable {
 
     /// The cursor delta in points for this frame, or nil when it is below the deadband.
     public mutating func delta(for centroid: Point, at t: Double) -> Point? {
+        step(for: centroid, at: t).cursor
+    }
+
+    /// One frame of filtered palm motion and the cursor delta it maps to.
+    public struct Step: Sendable, Equatable {
+        /// Filtered palm displacement in frame heights.
+        public var motion: Point
+        /// Accelerated cursor delta in points, or nil below the deadband.
+        public var cursor: Point?
+    }
+
+    public mutating func step(for centroid: Point, at t: Double) -> Step {
         let filtered = filter.filter(centroid, at: t)
         defer { last = TimedPoint(t: t, point: filtered) }
-        guard let last, t > last.t else { return nil }
+        guard let last, t > last.t else { return Step(motion: .zero, cursor: nil) }
         let motion = filtered - last.point
         let speed = motion.length / (t - last.t)
         let delta = motion * settings.gain(atSpeed: speed)
-        return delta.length >= settings.deadband ? delta : nil
+        return Step(motion: motion, cursor: delta.length >= settings.deadband ? delta : nil)
     }
 }
 

@@ -60,6 +60,8 @@ public final class OutputDriver {
     public let environment: any PointerEnvironment
     private var edge = EdgeStick()
     private var dragging: MouseButton?
+    private var scrollRemainder = Point.zero
+    private var coasting = false
     /// True after a post failed for lack of Accessibility permission; cleared by the next success.
     public private(set) var isBlocked = false
     public private(set) var posted = 0
@@ -90,7 +92,20 @@ public final class OutputDriver {
         case .dragEnded(let button):
             dragging = nil
             post(.mouseUp(button: button, at: environment.cursor, clickCount: 1))
+        case .scroll(let dx, let dy, let phase):
+            scroll(dx: dx, dy: dy, phase: phase)
         }
+    }
+
+    /// Wheel events carry whole pixels; the fractional remainder carries into the next event.
+    private func scroll(dx: Double, dy: Double, phase: ScrollPhase) {
+        scrollRemainder += Point(x: dx, y: dy)
+        let whole = Point(x: scrollRemainder.x.rounded(.towardZero), y: scrollRemainder.y.rounded(.towardZero))
+        scrollRemainder -= whole
+        let momentumStart = phase == .momentum && !coasting
+        coasting = phase == .momentum
+        if phase == .began || phase == .momentumEnded { scrollRemainder = .zero }
+        post(.scroll(dx: Int(whole.x), dy: Int(whole.y), phase: phase, momentumStart: momentumStart))
     }
 
     private func move(by delta: Point, at t: Double, action: (Point) -> OutputAction) {

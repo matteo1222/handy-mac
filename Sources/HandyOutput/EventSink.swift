@@ -17,9 +17,35 @@ public final class CGEventSink: EventSink {
 
     public func post(_ action: OutputAction) -> Bool {
         guard AccessibilityPermission.isGranted else { return false }
-        guard let event = mouseEvent(for: action) else { return false }
+        let event: CGEvent? =
+            if case .scroll(let dx, let dy, let phase, let momentumStart) = action {
+                scrollEvent(dx: dx, dy: dy, phase: phase, momentumStart: momentumStart)
+            } else {
+                mouseEvent(for: action)
+            }
+        guard let event else { return false }
         event.post(tap: .cghidEventTap)
         return true
+    }
+
+    /// A continuous (trackpad-like) pixel scroll event with scroll and momentum phases set.
+    private func scrollEvent(dx: Int, dy: Int, phase: ScrollPhase, momentumStart: Bool) -> CGEvent? {
+        let event = CGEvent(
+            scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2, wheel1: Int32(dy), wheel2: Int32(dx),
+            wheel3: 0)
+        event?.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        // kCGScrollPhase: began 1, changed 2, ended 4. kCGMomentumScrollPhase: begin 1, continue 2, end 3.
+        let (scrollPhase, momentumPhase): (Int64, Int64) =
+            switch phase {
+            case .began: (1, 0)
+            case .changed: (2, 0)
+            case .ended: (4, 0)
+            case .momentum: (0, momentumStart ? 1 : 2)
+            case .momentumEnded: (0, 3)
+            }
+        event?.setIntegerValueField(.scrollWheelEventScrollPhase, value: scrollPhase)
+        event?.setIntegerValueField(.scrollWheelEventMomentumPhase, value: momentumPhase)
+        return event
     }
 
     private func mouseEvent(for action: OutputAction) -> CGEvent? {
@@ -54,6 +80,8 @@ private struct MouseEventSpec {
             (type, at, self.button, clickCount) = (
                 button == .left ? .leftMouseDragged : .rightMouseDragged, point, button, 0
             )
+        case .scroll:
+            (type, at, button, clickCount) = (.scrollWheel, .zero, .left, 0)
         }
     }
 }

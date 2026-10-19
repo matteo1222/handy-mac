@@ -67,6 +67,7 @@ extension Engine.Mode {
         case .arming: "Arming"
         case .engaged: "Engaged"
         case .dragging: "Dragging"
+        case .scrolling: "Scrolling"
         }
     }
 
@@ -74,7 +75,7 @@ extension Engine.Mode {
         switch self {
         case .off: "hand.raised.slash"
         case .watching, .arming: "hand.raised"
-        case .engaged, .dragging: "hand.raised.fill"
+        case .engaged, .dragging, .scrolling: "hand.raised.fill"
         }
     }
 }

@@ -75,8 +75,8 @@ public struct Engine: Sendable {
             return transition(
                 to: .engaged(
                     Engaged(
-                        hand: hand.id, lastSeen: t, pointer: pointer, clicks: ClickRecognizer(settings: settings.click)
-                    )))
+                        hand: hand.id, lastSeen: t, pointer: pointer, clicks: ClickRecognizer(settings: settings.click),
+                        scroll: ScrollRecognizer(settings: settings.scroll))))
         }
         state = .arming(arming)
         return []
@@ -87,28 +87,47 @@ public struct Engine: Sendable {
         let t = frame.t
         guard let hand = frame.hands.first(where: { $0.id == engaged.hand }) else {
             guard t - engaged.lastSeen >= settings.handLostGrace else { return [] }
-            return engaged.clicks.cancel() + transition(to: .watching)
+            return engaged.clicks.cancel() + engaged.scroll.cancel() + transition(to: .watching)
         }
         engaged.lastSeen = t
         var events: [Event] = []
         if isFist(hand), case .idle = engaged.clicks.phase {
+            events += engaged.scroll.cancel()
             let since = engaged.fistSince ?? t
-            if t - since >= settings.fistDwell { return transition(to: .watching) }
+            if t - since >= settings.fistDwell { return events + transition(to: .watching) }
             engaged.fistSince = since
             // Closing into a fist must not drag the cursor; hold it while the fist forms.
             engaged.pointer.reanchor(at: hand.palmCentroid, t: t)
         } else {
             engaged.fistSince = nil
-            let delta = engaged.pointer.delta(for: hand.palmCentroid, at: t)
-            events = engaged.clicks.update(
-                pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle, delta: delta,
-                palm: hand.palmCentroid * settings.pointer.slowGain, at: t)
+            events = pointer(&engaged, hand, at: t)
         }
         engaged.closeness = engaged.clicks.closeness(pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle)
-        let wasDragging = current.isDragging
+        let previousMode = current.pointerMode
         state = .engaged(engaged)
-        if engaged.isDragging != wasDragging { events.append(.modeChanged(to: mode)) }
+        if engaged.pointerMode != previousMode { events.append(.modeChanged(to: mode)) }
         return events
+    }
+
+    /// Scroll gets first claim on the hand's motion; whatever it does not own goes to pointing and clicking.
+    private func pointer(_ engaged: inout Engaged, _ hand: HandFeatures, at t: Double) -> [Event] {
+        let step = engaged.pointer.step(for: hand.palmCentroid, at: t)
+        var events: [Event] = []
+        if case .idle = engaged.clicks.phase {
+            let scrollPose = isScrollPose(hand)
+            events = engaged.scroll.update(
+                isScrollPose: scrollPose, motion: step.motion, cursorMoved: step.cursor != nil && !scrollPose, at: t)
+            if engaged.scroll.ownsMotion { return events }
+        }
+        return events
+            + engaged.clicks.update(
+                pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle, delta: step.cursor,
+                palm: hand.palmCentroid * settings.pointer.slowGain, at: t)
+    }
+
+    /// Index and middle up, ring and little curled.
+    func isScrollPose(_ hand: HandFeatures) -> Bool {
+        hand.isExtended(.index) && hand.isExtended(.middle) && !hand.isExtended(.ring) && !hand.isExtended(.little)
     }
 
     private func pointerHand(in frame: FrameFeatures) -> HandFeatures? {
@@ -141,6 +160,7 @@ extension Engine {
         case arming
         case engaged
         case dragging
+        case scrolling
     }
 
     public enum State: Sendable, Equatable {
@@ -154,7 +174,7 @@ extension Engine {
             case .off: .off
             case .watching: .watching
             case .arming: .arming
-            case .engaged(let engaged): engaged.isDragging ? .dragging : .engaged
+            case .engaged(let engaged): engaged.pointerMode
             }
         }
     }
@@ -176,9 +196,12 @@ extension Engine {
         /// How closed the pinch is, 0...1, for the cursor ring.
         public var closeness: Double?
 
-        public var isDragging: Bool {
-            if case .dragging = clicks.phase { return true }
-            return false
+        public var scroll: ScrollRecognizer
+
+        /// Engaged, dragging or scrolling, for the HUD.
+        public var pointerMode: Mode {
+            if case .dragging = clicks.phase { return .dragging }
+            return scroll.isScrolling ? .scrolling : .engaged
         }
     }
 
@@ -204,6 +227,8 @@ extension Engine {
         /// Relative drag motion in points.
         case dragMoved(dx: Double, dy: Double)
         case dragEnded(button: MouseButton)
+        /// Content travel in points (content follows the hand), with trackpad phases.
+        case scroll(dx: Double, dy: Double, phase: ScrollPhase)
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -236,6 +261,7 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var palmFacingMinimum = 0.5
     public var pointer = PointerSettings()
     public var click = ClickSettings()
+    public var scroll = ScrollSettings()
 
     public init() {}
 }

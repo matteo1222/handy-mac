@@ -59,4 +59,10 @@ fixture gestures/doubleClick --script "openPalm:700ms pinch:120ms openPalm:130ms
 fixture scenarios/twoSlowClicksStaySingle --script "openPalm:700ms pinch:120ms openPalm:600ms pinch:120ms openPalm:400ms" --noise 1px --seed 19
 fixture scenarios/holdWithoutMovingStartsDrag --script "openPalm:700ms pinch:600ms openPalm:300ms" --noise 1px --seed 20
 
+# Scroll (TASK-9)
+fixture gestures/scroll --script "openPalm:700ms twoFingers:300ms twoFingers:600ms->0.9,0.55 twoFingers:300ms openPalm:600ms" --noise 1px --seed 21
+fixture scenarios/scrollHorizontal --script "openPalm:700ms twoFingers:300ms twoFingers:600ms->1.1,0.75 twoFingers:300ms openPalm:400ms" --noise 1px --seed 22
+fixture scenarios/scrollMomentum --script "openPalm:700ms twoFingers:300ms twoFingers:200ms->0.9,0.6 openPalm:1200ms" --noise 1px --seed 23
+fixture scenarios/briefScrollPoseDoesNotScroll --script "openPalm:700ms twoFingers:100ms openPalm:500ms" --noise 1px --seed 24
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi
