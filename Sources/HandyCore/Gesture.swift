@@ -18,4 +18,6 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case doubleClick
     /// Index and middle up, moved; momentum on release.
     case scroll
+    /// Both hands crossed, held 1 s: tracking off.
+    case hardStop
 }

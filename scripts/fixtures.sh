@@ -65,4 +65,16 @@ fixture scenarios/scrollHorizontal --script "openPalm:700ms twoFingers:300ms two
 fixture scenarios/scrollMomentum --script "openPalm:700ms twoFingers:300ms twoFingers:200ms->0.9,0.6 openPalm:1200ms" --noise 1px --seed 23
 fixture scenarios/briefScrollPoseDoesNotScroll --script "openPalm:700ms twoFingers:100ms openPalm:500ms" --noise 1px --seed 24
 
+# Attention gate (TASK-10)
+fixture scenarios/lookingAwayNeverEngages --script "openPalm:2s" --face "60:2s" --noise 1px --seed 25
+fixture scenarios/noFaceNeverEngages --script "openPalm:2s" --face "none:2s" --noise 1px --seed 26
+fixture scenarios/lookingAwayDisengages --script "openPalm:2s" --face "0:1s 50:1s" --noise 1px --seed 27
+fixture scenarios/glanceAwayKeepsEngagement --script "openPalm:2s" --face "0:1s 50:200ms 0:800ms" --noise 1px --seed 28
+
+# Crossed-hands hard stop (TASK-11)
+fixture gestures/hardStop --script "openPalm:1500ms@0.6,0.75~0.12" --other-hand "openPalm:1500ms@1.2,0.75~0.12" --noise 1px --seed 29
+fixture scenarios/briefCrossDoesNotStop --script "openPalm:600ms@0.6,0.75~0.12 none:600ms" --other-hand "openPalm:600ms@1.2,0.75~0.12 none:600ms" --noise 1px --seed 30
+fixture scenarios/handsSideBySideDoNotStop --script "openPalm:2s@1.2,0.75~0.12" --other-hand "openPalm:2s@0.6,0.75~0.12" --noise 1px --seed 31
+fixture scenarios/hardStopWhileDragging --script "openPalm:700ms@0.6,0.75~0.12 pinch:1500ms" --other-hand "none:700ms openPalm:1500ms@1.2,0.75~0.12" --noise 1px --seed 32
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

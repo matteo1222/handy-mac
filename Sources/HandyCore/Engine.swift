@@ -6,10 +6,14 @@
 public struct Engine: Sendable {
     public var settings: EngineSettings
     public private(set) var state: State
+    private var attention: AttentionGate
+    private var hardStop: HardStop
 
     public init(mode: Mode = .off, settings: EngineSettings = EngineSettings()) {
         self.settings = settings
         self.state = mode == .off ? .off : .watching
+        attention = AttentionGate(settings: settings.attention)
+        hardStop = HardStop(settings: settings.hardStop)
     }
 
     public var mode: Mode { state.mode }
@@ -42,16 +46,30 @@ public struct Engine: Sendable {
     }
 
     private mutating func handle(_ frame: FrameFeatures) -> [Event] {
+        guard state != .off else { return [] }
+        attention.observe(frame.face, at: frame.t)
+        if hardStop.update(frame) { return releaseHeld(in: state) + transition(to: .off) }
         switch state {
-        case .off: []
-        case .watching: watching(frame)
-        case .arming(let current): arming(current, frame)
-        case .engaged(let current): engaged(current, frame)
+        case .off: return []
+        case .watching: return watching(frame)
+        case .arming(let current):
+            return attention.allowsEngaging(at: frame.t) ? arming(current, frame) : transition(to: .watching)
+        case .engaged(let current):
+            return attention.hasLookedAway(at: frame.t)
+                ? releaseHeld(in: state) + transition(to: .watching) : engaged(current, frame)
         }
     }
 
+    /// Ends any drag or scroll in progress, so nothing is left held down when a guard fires.
+    private func releaseHeld(in state: State) -> [Event] {
+        guard case .engaged(var engaged) = state else { return [] }
+        return engaged.clicks.cancel() + engaged.scroll.cancel()
+    }
+
     private mutating func watching(_ frame: FrameFeatures) -> [Event] {
-        guard let hand = pointerHand(in: frame), isOpenPalm(hand) else { return [] }
+        guard attention.allowsEngaging(at: frame.t), let hand = pointerHand(in: frame), isOpenPalm(hand) else {
+            return []
+        }
         return transition(to: .arming(Arming(hand: hand.id, since: frame.t, lastSeen: frame.t)))
     }
 
@@ -147,6 +165,10 @@ public struct Engine: Sendable {
 
     private mutating func transition(to next: State) -> [Event] {
         let previous = mode
+        if next == .off {
+            attention = AttentionGate(settings: settings.attention)
+            hardStop = HardStop(settings: settings.hardStop)
+        }
         state = next
         return next.mode == previous ? [] : [.modeChanged(to: next.mode)]
     }
@@ -262,6 +284,8 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var pointer = PointerSettings()
     public var click = ClickSettings()
     public var scroll = ScrollSettings()
+    public var attention = AttentionSettings()
+    public var hardStop = HardStopSettings()
 
     public init() {}
 }

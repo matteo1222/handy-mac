@@ -1,0 +1,26 @@
+[
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "arming"
+      }
+    },
+    "t" : 0
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "engaged"
+      }
+    },
+    "t" : 0.3
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "off"
+      }
+    },
+    "t" : 1
+  }
+]
