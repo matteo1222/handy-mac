@@ -13,6 +13,8 @@ public struct Engine: Sendable {
         switch input {
         case .command(let command):
             return handle(command)
+        case .frame:
+            return []
         }
     }
 
@@ -48,6 +50,7 @@ extension Engine {
 
     public enum Input: Sendable, Equatable {
         case command(Command)
+        case frame(FrameFeatures)
     }
 
     public enum Event: Sendable, Equatable, Codable {
