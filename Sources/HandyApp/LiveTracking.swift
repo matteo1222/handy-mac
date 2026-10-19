@@ -166,6 +166,9 @@ final class LiveTracking {
         record(frame.landmarks)
     }
 
+    var lastBrightness: Double { last?.brightness ?? 0.5 }
+    var lastAspect: Double { last?.aspect ?? 16.0 / 9 }
+
     /// A camera problem to say plainly in the HUD, or nil.
     var problem: Problem? {
         switch camera {

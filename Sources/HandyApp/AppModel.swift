@@ -4,6 +4,7 @@ import HandyCore
 import HandyOutput
 import HandyPerception
 import Observation
+import SwiftUI
 import os
 
 /// The composition root for the running app: owns the session (engine + perception pipeline),
@@ -28,6 +29,8 @@ public final class AppModel {
     @ObservationIgnored private var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?
+    private(set) var onboarding: OnboardingModel?
+    @ObservationIgnored private var onboardingWindow: NSWindow?
     private static let log = Logger(subsystem: "dev.handy", category: "app")
 
     public init() {
@@ -40,7 +43,58 @@ public final class AppModel {
             self.process(frame)
         }
         changed = { [weak self] in self?.updateHUD() }
+        if let calibration = CalibrationStore.load() { applyCalibration(calibration) }
     }
+
+    // MARK: Onboarding
+
+    private static let onboardedKey = "onboarded"
+
+    /// Opens the tutorial window; shown automatically on first launch.
+    func showOnboarding() {
+        let onboarding =
+            onboarding
+            ?? OnboardingModel(
+                startTracking: { [weak self] in self?.send(.start) },
+                finish: { [weak self] calibration in self?.finishOnboarding(calibration) })
+        self.onboarding = onboarding
+        let window =
+            onboardingWindow
+            ?? NSWindow(
+                contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Welcome to Handy"
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(
+            rootView: OnboardingView(model: onboarding) { [weak self] in self?.closeOnboarding() })
+        window.center()
+        onboardingWindow = window
+        NSApplication.shared.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func closeOnboarding() {
+        onboardingWindow?.close()
+        onboarding = nil
+    }
+
+    private func finishOnboarding(_ calibration: Calibration?) {
+        UserDefaults.standard.set(true, forKey: Self.onboardedKey)
+        guard let calibration else { return }
+        do {
+            try CalibrationStore.save(calibration)
+        } catch {
+            Self.log.error("saving calibration failed: \(error.localizedDescription)")
+        }
+        applyCalibration(calibration)
+    }
+
+    private func applyCalibration(_ calibration: Calibration) {
+        var settings = session.engine.settings
+        calibration.apply(to: &settings)
+        session.configure(settings)
+    }
+
+    var needsOnboarding: Bool { !UserDefaults.standard.bool(forKey: Self.onboardedKey) }
 
     private static let cameraKey = "cameraID"
 
@@ -80,6 +134,7 @@ public final class AppModel {
         } catch {
             Self.log.error("control socket unavailable: \(String(describing: error))")
         }
+        if needsOnboarding { showOnboarding() }
     }
 
     public func send(_ command: Engine.Command) {
@@ -91,6 +146,10 @@ public final class AppModel {
         lastFrameTime = frame.t
         apply(session.process(frame))
         tracking.publishDebug(session.lastFeatures, for: frame)
+        if let onboarding, let features = session.lastFeatures {
+            onboarding.observe(
+                features, brightness: tracking.lastBrightness, aspect: tracking.lastAspect, mode: session.engine.mode)
+        }
         updateHUD()
         updateCursorRing()
     }
@@ -105,6 +164,7 @@ public final class AppModel {
         injectedEvents?.append(contentsOf: events)
         for timed in events {
             recentEvents.append(timed)
+            onboarding?.handle(timed.event)
             if case .modeChanged(let mode) = timed.event { changeMode(to: mode) }
             output.handle(timed.event, at: timed.t)
             if let description = timed.event.actionDescription { lastAction = description }

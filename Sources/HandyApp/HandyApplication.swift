@@ -58,6 +58,7 @@ struct MenuBarContent: View {
         Button(model.mode == .off ? "Start Watching" : "Stop") { model.send(.toggle) }
         Text("Stop from anywhere: \(GlobalHotKey.stopDisplay)")
         Divider()
+        Button("Tutorial…") { model.showOnboarding() }
         Button("Settings…") {
             NSApplication.shared.activate()
             openSettings()

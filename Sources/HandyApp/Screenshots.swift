@@ -17,7 +17,9 @@ enum Screenshots {
         }
     }
 
-    nonisolated static let targets = ["hud", "hud-gallery", "cursor-ring", "settings"]
+    nonisolated static let targets = [
+        "hud", "hud-gallery", "cursor-ring", "settings", "onboarding", "onboarding:<step>",
+    ]
 
     static func render(_ target: String, model: AppModel, to url: URL) throws {
         let view: AnyView
@@ -26,6 +28,13 @@ enum Screenshots {
             view = AnyView(HUDView(state: model.currentHUD).padding(12))
         case "hud-gallery":
             view = AnyView(HUDGallery().padding(12))
+        case "onboarding":
+            view = AnyView(OnboardingContactSheet())
+        case let step where step.hasPrefix("onboarding:"):
+            guard let parsed = Tutorial.Step(rawValue: String(step.dropFirst("onboarding:".count))) else {
+                throw Failure.unknownTarget(step)
+            }
+            view = AnyView(OnboardingView(model: .preview(at: parsed)))
         case "settings":
             view = AnyView(SettingsView(model: model))
         case "cursor-ring":
@@ -76,4 +85,18 @@ struct HUDGallery: View {
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .tooDark),
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .accessibilityNeeded),
     ]
+}
+
+/// Every onboarding step side by side, for visual review.
+struct OnboardingContactSheet: View {
+    var body: some View {
+        let columns = [GridItem(.fixed(520), spacing: 12), GridItem(.fixed(520), spacing: 12), GridItem(.fixed(520))]
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(Tutorial.Step.allCases, id: \.self) { step in
+                OnboardingView(model: .preview(at: step))
+                    .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .padding(12)
+    }
 }

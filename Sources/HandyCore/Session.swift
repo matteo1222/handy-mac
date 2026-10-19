@@ -30,6 +30,11 @@ public struct Session: Sendable {
         return engine.handle(.frame(features)).map { TimedEvent(t: frame.t, event: $0) }
     }
 
+    /// New settings take effect from the next engage (recognizers keep theirs until then).
+    public mutating func configure(_ settings: EngineSettings) {
+        engine.settings = settings
+    }
+
     public mutating func send(_ command: Engine.Command, at t: Double) -> [TimedEvent] {
         engine.handle(.command(command)).map { TimedEvent(t: t, event: $0) }
     }
