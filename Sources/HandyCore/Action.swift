@@ -90,11 +90,16 @@ public struct Bindings: Sendable, Hashable, Codable {
     public var oneShots: [PoseClass: Action]
     public var flicks: [Direction: Action]
     public var swipes: [Direction: Action]
+    public var zooms: [ZoomDirection: Action]
 
-    public init(oneShots: [PoseClass: Action], flicks: [Direction: Action], swipes: [Direction: Action]) {
+    public init(
+        oneShots: [PoseClass: Action], flicks: [Direction: Action], swipes: [Direction: Action],
+        zooms: [ZoomDirection: Action]
+    ) {
         self.oneShots = oneShots
         self.flicks = flicks
         self.swipes = swipes
+        self.zooms = zooms
     }
 
     public static let defaults = Bindings(
@@ -112,5 +117,9 @@ public struct Bindings: Sendable, Hashable, Codable {
             .left: .previousSpace,
             .right: .nextSpace,
             .up: .missionControl,
+        ],
+        zooms: [
+            .zoomIn: .key(KeyChord(.character("="), [.command])),
+            .zoomOut: .key(KeyChord(.character("-"), [.command])),
         ])
 }

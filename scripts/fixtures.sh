@@ -102,4 +102,9 @@ fixture scenarios/shortSwipeDoesNotFire --script "relaxed:300ms openPalm:100ms@0
 fixture scenarios/slowPalmMoveIsNotASwipe --script "relaxed:300ms openPalm:100ms@0.6,0.75 openPalm:1500ms->1.2,0.75 relaxed:400ms" --noise 1px --seed 50
 fixture scenarios/swipeWhileEngagedMovesTheCursor --script "openPalm:700ms@0.6,0.75 openPalm:300ms->1.2,0.75 openPalm:300ms" --noise 1px --seed 51
 
+# Two-hand pinch zoom (TASK-23)
+fixture gestures/zoomIn --script "openPalm:700ms@1.1,0.75~0.12 pinch:200ms pinch:600ms->1.4,0.75 openPalm:400ms" --other-hand "none:700ms pinch:200ms@0.7,0.75~0.12 pinch:600ms->0.4,0.75 openPalm:400ms" --noise 1px --seed 52
+fixture gestures/zoomOut --script "openPalm:700ms@1.4,0.75~0.12 pinch:200ms pinch:600ms->1.05,0.75 openPalm:400ms" --other-hand "none:700ms pinch:200ms@0.4,0.75~0.12 pinch:600ms->0.75,0.75 openPalm:400ms" --noise 1px --seed 53
+fixture scenarios/clickWithOtherHandVisibleIsAClick --script "openPalm:700ms@1.1,0.75~0.12 pinch:150ms openPalm:400ms" --other-hand "relaxed:1250ms@0.6,0.8~0.12" --noise 1px --seed 54
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

@@ -114,6 +114,16 @@ public struct ClickRecognizer: Sendable, Equatable {
         }
     }
 
+    /// Drops a press without clicking (a two-hand zoom took over); ends a drag cleanly.
+    public mutating func abandon() -> [Engine.Event] {
+        defer {
+            phase = .idle
+            lastClick = nil
+        }
+        if case .dragging(let button) = phase { return [.dragEnded(button: button)] }
+        return []
+    }
+
     /// Ends any drag, for disengaging mid-gesture.
     public mutating func cancel() -> [Engine.Event] {
         defer {

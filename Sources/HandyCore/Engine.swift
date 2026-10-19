@@ -130,7 +130,8 @@ public struct Engine: Sendable {
                 to: .engaged(
                     Engaged(
                         hand: hand.id, lastSeen: t, pointer: pointer, clicks: ClickRecognizer(settings: settings.click),
-                        scroll: ScrollRecognizer(settings: settings.scroll))))
+                        scroll: ScrollRecognizer(settings: settings.scroll),
+                        zoom: ZoomRecognizer(settings: settings.zoom))))
         }
         state = .arming(arming)
         return []
@@ -154,12 +155,31 @@ public struct Engine: Sendable {
             engaged.pointer.reanchor(at: hand.palmCentroid, t: t)
         } else {
             engaged.fistSince = nil
-            events = pointer(&engaged, hand, at: t)
+            events = zoom(&engaged, hand, frame) ?? pointer(&engaged, hand, at: t)
         }
         engaged.closeness = engaged.clicks.closeness(pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle)
         let previousMode = current.pointerMode
         state = .engaged(engaged)
         if engaged.pointerMode != previousMode { events.append(.modeChanged(to: mode)) }
+        return events
+    }
+
+    /// Two-hand pinch zoom takes over both hands while it runs; returns nil when not zooming.
+    private func zoom(_ engaged: inout Engaged, _ hand: HandFeatures, _ frame: FrameFeatures) -> [Event]? {
+        func pinch(_ hand: HandFeatures?) -> (pinched: Bool, at: Point)? {
+            guard let hand, let thumb = hand[.thumbTip], let index = hand[.indexTip] else { return nil }
+            let pinched =
+                (hand.pinchIndex ?? 1) < settings.click.press && hand.reach.index >= settings.click.minFingerReach
+            return (pinched, (thumb + index) / 2)
+        }
+        let other = frame.hands.first { $0.id != engaged.hand }
+        let wasZooming = engaged.zoom.isZooming
+        let steps = engaged.zoom.update(pointer: pinch(hand), other: pinch(other), at: frame.t)
+        guard engaged.zoom.isZooming else { return wasZooming ? [] : nil }
+        var events = wasZooming ? [] : engaged.clicks.abandon() + engaged.scroll.cancel()
+        // The cursor stays where it was while zooming.
+        engaged.pointer.reanchor(at: hand.palmCentroid, t: frame.t)
+        events += steps.map { .zoom($0) }
         return events
     }
 
@@ -209,7 +229,9 @@ public struct Engine: Sendable {
             flicks.reset()
         }
         if next != .watching, next.mode != .arming { swipes.reset() }
-        if next == .watching, [.engaged, .dragging, .scrolling].contains(previous) { oneShot.blockUntilRelease() }
+        if next == .watching, [.engaged, .dragging, .scrolling, .zooming].contains(previous) {
+            oneShot.blockUntilRelease()
+        }
         if next == .off {
             attention = AttentionGate(settings: settings.attention)
             hardStop = HardStop(settings: settings.hardStop)
@@ -228,6 +250,7 @@ extension Engine {
         case engaged
         case dragging
         case scrolling
+        case zooming
     }
 
     public enum State: Sendable, Equatable {
@@ -264,9 +287,11 @@ extension Engine {
         public var closeness: Double?
 
         public var scroll: ScrollRecognizer
+        public var zoom: ZoomRecognizer
 
-        /// Engaged, dragging or scrolling, for the HUD.
+        /// Engaged, dragging, scrolling or zooming, for the HUD.
         public var pointerMode: Mode {
+            if zoom.isZooming { return .zooming }
             if case .dragging = clicks.phase { return .dragging }
             return scroll.isScrolling ? .scrolling : .engaged
         }
@@ -302,6 +327,8 @@ extension Engine {
         case flick(Direction)
         /// An open-palm swipe while not engaged.
         case swipe(Direction)
+        /// One step of two-hand pinch zoom.
+        case zoom(ZoomDirection)
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -343,6 +370,7 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var oneShot = OneShotSettings()
     public var flick = FlickSettings()
     public var swipe = SwipeSettings()
+    public var zoom = ZoomSettings()
     /// The open palm counts as held only below this palm speed, in frame heights per second.
     public var armMaxSpeed = 0.6
     /// Camera frame width over height; set from the live camera.

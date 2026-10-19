@@ -85,7 +85,7 @@ struct MenuBarSymbol: Equatable {
     var name: String {
         switch (mode, cameraLive) {
         case (.off, _): "hand.raised.slash"
-        case (.engaged, true), (.dragging, true), (.scrolling, true): "hand.raised.circle.fill"
+        case (.engaged, true), (.dragging, true), (.scrolling, true), (.zooming, true): "hand.raised.circle.fill"
         case (_, true): "hand.raised.circle"
         case (_, false): "hand.raised"
         }
@@ -105,6 +105,7 @@ extension Engine.Mode {
         case .engaged: "Engaged"
         case .dragging: "Dragging"
         case .scrolling: "Scrolling"
+        case .zooming: "Zooming"
         }
     }
 }

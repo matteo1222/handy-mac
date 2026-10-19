@@ -33,4 +33,7 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case swipeLeft
     case swipeRight
     case swipeUp
+    /// Two-hand pinch spread / close while engaged.
+    case zoomIn
+    case zoomOut
 }

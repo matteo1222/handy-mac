@@ -87,6 +87,7 @@ public struct ActionRouter: Sendable {
         case .oneShot(let pose): bindings.oneShots[pose].map { [$0] } ?? []
         case .flick(let direction): bindings.flicks[direction].map { [$0] } ?? []
         case .swipe(let direction): bindings.swipes[direction].map { [$0] } ?? []
+        case .zoom(let direction): bindings.zooms[direction].map { [$0] } ?? []
         default: []
         }
     }
