@@ -1,3 +1,4 @@
+import HandyOutput
 import HandyPerception
 import SwiftUI
 
@@ -8,6 +9,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             CameraSection(model: model)
+            DictationSection()
         }
         .formStyle(.grouped)
         .frame(width: 460)
@@ -59,5 +61,34 @@ extension CameraDevice.Kind {
         case .external: "web.camera"
         case .continuity: "iphone"
         }
+    }
+}
+
+struct DictationSection: View {
+    @State private var shortcut = DictationShortcut.current()
+
+    var body: some View {
+        Section {
+            LabeledContent("Shaka (🤙) toggles Dictation") {
+                if let shortcut {
+                    Text(shortcut.description).foregroundStyle(.secondary)
+                } else {
+                    Button("Set Up in Keyboard Settings") {
+                        if let url = DictationShortcut.settingsURL { NSWorkspace.shared.open(url) }
+                    }
+                }
+            }
+        } header: {
+            Text("Dictation")
+        } footer: {
+            Text(
+                shortcut == nil
+                    ? "Turn on Dictation and choose a shortcut in System Settings → Keyboard; Handy sends that shortcut."
+                    : "Handy sends your Dictation shortcut."
+            )
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
+        .onAppear { shortcut = DictationShortcut.current() }
     }
 }

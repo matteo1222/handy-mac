@@ -36,4 +36,6 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     /// Two-hand pinch spread / close while engaged.
     case zoomIn
     case zoomOut
+    /// Shaka held 500 ms while not engaged: toggles Dictation.
+    case dictation
 }

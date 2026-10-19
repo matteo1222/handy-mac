@@ -1,4 +1,5 @@
 import AppKit
+import HandyOutput
 import HandyPerception
 
 /// Something stopping Handy from working, said plainly, with a one-click fix where there is one.
@@ -10,6 +11,7 @@ enum Problem: Equatable {
     case cameraFailed(String)
     case accessibilityNeeded
     case tooDark
+    case dictationUnavailable
 
     var message: String {
         switch self {
@@ -20,6 +22,7 @@ enum Problem: Equatable {
         case .cameraFailed(let detail): "Camera error: \(detail)"
         case .accessibilityNeeded: "Accessibility permission needed"
         case .tooDark: "Too dark to see your hands. Add light"
+        case .dictationUnavailable: "Dictation is off or has no shortcut"
         }
     }
 
@@ -29,6 +32,7 @@ enum Problem: Equatable {
         case .cameraDisconnected, .noCamera: .useFallbackCamera
         case .cameraPermissionDenied: .openCameraSettings
         case .accessibilityNeeded: .openAccessibilitySettings
+        case .dictationUnavailable: .openKeyboardSettings
         case .tooDark: nil
         }
     }
@@ -38,12 +42,14 @@ enum Problem: Equatable {
         case useFallbackCamera
         case openCameraSettings
         case openAccessibilitySettings
+        case openKeyboardSettings
 
         var title: String {
             switch self {
             case .retryCamera: "Retry"
             case .useFallbackCamera: CameraDevices.fallback().map { "Use \($0.name)" } ?? "Retry"
             case .openCameraSettings, .openAccessibilitySettings: "Open Settings"
+            case .openKeyboardSettings: "Open Keyboard Settings"
             }
         }
 
@@ -54,6 +60,7 @@ enum Problem: Equatable {
                 URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")
             case .openAccessibilitySettings:
                 URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            case .openKeyboardSettings: DictationShortcut.settingsURL
             case .retryCamera, .useFallbackCamera: nil
             }
         }

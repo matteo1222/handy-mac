@@ -29,6 +29,9 @@ public final class AppModel {
     @ObservationIgnored private var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?
+    /// A problem that clears itself after a few seconds, such as asking for Dictation when it is off.
+    @ObservationIgnored private var transientProblem: Problem?
+    @ObservationIgnored private var transientTask: Task<Void, Never>?
     private(set) var onboarding: OnboardingModel?
     @ObservationIgnored private var onboardingWindow: NSWindow?
     private static let log = Logger(subsystem: "dev.handy", category: "app")
@@ -115,14 +118,28 @@ extension AppModel {
         }
     }
 
+    /// Shows a problem for a few seconds.
+    func show(transient problem: Problem) {
+        transientProblem = problem
+        transientTask?.cancel()
+        transientTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            self?.transientProblem = nil
+            self?.updateHUD()
+        }
+        updateHUD()
+    }
+
     /// Runs a problem's one-click fix.
     func apply(_ fix: Problem.Fix) {
+        if transientProblem?.fix == fix { transientProblem = nil }
         switch fix {
         case .retryCamera:
             tracking.restart()
         case .useFallbackCamera:
             cameraID = CameraDevices.fallback()?.id
-        case .openCameraSettings, .openAccessibilitySettings:
+        case .openCameraSettings, .openAccessibilitySettings, .openKeyboardSettings:
             if let url = fix.settingsURL { NSWorkspace.shared.open(url) }
         }
     }
@@ -183,6 +200,10 @@ extension AppModel {
             for action in router.actions(for: timed.event) {
                 output.perform(action)
                 lastAction = action.description
+                if output.dictationUnavailable {
+                    output.dictationUnavailable = false
+                    show(transient: .dictationUnavailable)
+                }
             }
         }
         if recentEvents.count > 40 { recentEvents.removeFirst(recentEvents.count - 40) }
@@ -213,6 +234,7 @@ extension AppModel {
     /// The most pressing thing to say plainly in the HUD.
     var problem: Problem? {
         if let camera = tracking.problem { return camera }
+        if let transientProblem { return transientProblem }
         if output.isBlocked, !AccessibilityPermission.isGranted { return .accessibilityNeeded }
         return nil
     }

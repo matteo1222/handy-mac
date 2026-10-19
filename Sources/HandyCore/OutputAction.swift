@@ -10,4 +10,7 @@ public enum OutputAction: Sendable, Equatable, Codable {
     case scroll(dx: Int, dy: Int, phase: ScrollPhase, momentumStart: Bool)
     /// Press and release a key chord.
     case keyStroke(KeyChord)
+    /// Press and release a modifier key twice quickly, as Dictation's "Press Control twice" expects.
+    /// `globe` is the Fn/Globe key.
+    case modifierDoubleTap(Modifier?)
 }

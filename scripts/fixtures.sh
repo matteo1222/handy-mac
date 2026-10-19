@@ -107,4 +107,7 @@ fixture gestures/zoomIn --script "openPalm:700ms@1.1,0.75~0.12 pinch:200ms pinch
 fixture gestures/zoomOut --script "openPalm:700ms@1.4,0.75~0.12 pinch:200ms pinch:600ms->1.05,0.75 openPalm:400ms" --other-hand "none:700ms pinch:200ms@0.4,0.75~0.12 pinch:600ms->0.75,0.75 openPalm:400ms" --noise 1px --seed 53
 fixture scenarios/clickWithOtherHandVisibleIsAClick --script "openPalm:700ms@1.1,0.75~0.12 pinch:150ms openPalm:400ms" --other-hand "relaxed:1250ms@0.6,0.8~0.12" --noise 1px --seed 54
 
+# Dictation (TASK-24)
+fixture gestures/dictation --script "relaxed:400ms shaka:800ms relaxed:400ms" --noise 1px --seed 55
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

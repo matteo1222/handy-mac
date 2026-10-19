@@ -104,8 +104,20 @@ public final class OutputDriver {
         case .key(let chord): post(.keyStroke(chord))
         case .previousSpace, .nextSpace, .missionControl:
             if let chord = SymbolicHotKeys.chord(for: action) { post(.keyStroke(chord)) }
+        case .toggleDictation:
+            switch dictation() {
+            case .doubleTap(let modifier): post(.modifierDoubleTap(modifier))
+            case .chord(let chord): post(.keyStroke(chord))
+            case .globe: post(.modifierDoubleTap(nil))
+            case nil: dictationUnavailable = true
+            }
         }
     }
+
+    /// Set when Dictation was asked for but is off or has no shortcut; the app guides the user.
+    public var dictationUnavailable = false
+    /// Where the Dictation shortcut comes from; replaceable for tests.
+    public var dictation: () -> DictationShortcut? = { DictationShortcut.current() }
 
     /// Wheel events carry whole pixels; the fractional remainder carries into the next event.
     private func scroll(dx: Double, dy: Double, phase: ScrollPhase) {

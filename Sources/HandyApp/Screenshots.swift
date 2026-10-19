@@ -84,6 +84,7 @@ struct HUDGallery: View {
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .cameraDisconnected),
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .tooDark),
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .accessibilityNeeded),
+        .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .dictationUnavailable),
     ]
 }
 

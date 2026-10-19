@@ -72,6 +72,8 @@ public enum Action: Sendable, Hashable, Codable {
     case previousSpace
     case nextSpace
     case missionControl
+    /// Starts or stops macOS Dictation with the user's Dictation shortcut.
+    case toggleDictation
 }
 
 extension Action: CustomStringConvertible {
@@ -81,6 +83,7 @@ extension Action: CustomStringConvertible {
         case .previousSpace: "Previous Space"
         case .nextSpace: "Next Space"
         case .missionControl: "Mission Control"
+        case .toggleDictation: "Dictation"
         }
     }
 }
@@ -106,6 +109,7 @@ public struct Bindings: Sendable, Hashable, Codable {
         oneShots: [
             .thumbsUp: .key(KeyChord(.returnKey)),
             .thumbsDown: .key(KeyChord(.escape)),
+            .shaka: .toggleDictation,
         ],
         flicks: [
             .up: .key(KeyChord(.up)),

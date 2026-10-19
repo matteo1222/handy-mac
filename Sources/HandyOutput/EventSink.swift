@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import CoreGraphics
 import HandyCore
 
@@ -18,6 +19,7 @@ public final class CGEventSink: EventSink {
     public func post(_ action: OutputAction) -> Bool {
         guard AccessibilityPermission.isGranted else { return false }
         if case .keyStroke(let chord) = action { return postKey(chord) }
+        if case .modifierDoubleTap(let modifier) = action { return postDoubleTap(modifier) }
         let event: CGEvent? =
             if case .scroll(let dx, let dy, let phase, let momentumStart) = action {
                 scrollEvent(dx: dx, dy: dy, phase: phase, momentumStart: momentumStart)
@@ -42,6 +44,28 @@ public final class CGEventSink: EventSink {
             }
             event.flags = flags
             event.post(tap: .cghidEventTap)
+        }
+        return true
+    }
+
+    /// Two quick presses of a modifier (or Fn/Globe when nil), posted as flags-changed events.
+    private func postDoubleTap(_ modifier: Modifier?) -> Bool {
+        let (code, flag): (Int, CGEventFlags) =
+            switch modifier {
+            case .control: (kVK_Control, .maskControl)
+            case .command: (kVK_Command, .maskCommand)
+            case .option: (kVK_Option, .maskAlternate)
+            case .shift: (kVK_Shift, .maskShift)
+            case nil: (kVK_Function, .maskSecondaryFn)
+            }
+        for _ in 0..<2 {
+            for down in [true, false] {
+                guard let event = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(code), keyDown: down)
+                else { return false }
+                event.type = .flagsChanged
+                event.flags = down ? flag : []
+                event.post(tap: .cghidEventTap)
+            }
         }
         return true
     }
@@ -98,7 +122,7 @@ private struct MouseEventSpec {
             (type, at, self.button, clickCount) = (
                 button == .left ? .leftMouseDragged : .rightMouseDragged, point, button, 0
             )
-        case .scroll, .keyStroke:
+        case .scroll, .keyStroke, .modifierDoubleTap:
             (type, at, button, clickCount) = (.null, .zero, .left, 0)
         }
     }

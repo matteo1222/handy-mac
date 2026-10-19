@@ -19,9 +19,10 @@ public enum SymbolicHotKeys {
         guard let id = ids[action], let fallback = defaults[action] else { return nil }
         guard let entry = table?[String(id)] as? [String: Any],
             let value = entry["value"] as? [String: Any],
-            let parameters = value["parameters"] as? [Int], parameters.count == 3,
+            let numbers = value["parameters"] as? [NSNumber], numbers.count == 3,
             (entry["enabled"] as? Bool) ?? true
         else { return fallback }
+        let parameters = numbers.map { Int(truncatingIfNeeded: $0.int64Value) }
         return KeyChord(key(forCode: parameters[1]), modifiers(parameters[2]))
     }
 
