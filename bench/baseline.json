@@ -1,0 +1,25 @@
+{
+  "corpus" : [
+    "synthetic no-gesture, 2.0 h"
+  ],
+  "falseActions" : {
+    "drag" : 1,
+    "engage" : 3,
+    "flick.down" : 1,
+    "flick.up" : 1
+  },
+  "falseActionsPerHour" : 2.98,
+  "gestureRecall" : {
+
+  },
+  "jitterPoints" : 0,
+  "lagMilliseconds" : 55.7,
+  "noGestureHours" : 2.013,
+  "processingMicroseconds" : {
+    "count" : 217444,
+    "max" : 187.9,
+    "mean" : 3.5,
+    "p50" : 2.9,
+    "p95" : 6.4
+  }
+}

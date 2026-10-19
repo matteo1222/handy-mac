@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-19 16:58'
+updated_date: '2026-10-19 17:18'
 labels:
   - ready-for-agent
 milestone: m-1
@@ -45,6 +45,8 @@ Completes R6: an index-finger flick in four directions while not engaged posts t
 
 <!-- SECTION:NOTES:BEGIN -->
 Fixture review found pointing while engaged started a right-button drag: the thumb resting on the curled middle finger read as a thumb-middle pinch. Pinches now only start when the target finger reaches out from the palm (ClickSettings.minFingerReach); release still uses the real distance, so a press cannot get stuck. No click fixture changed. Inject of gestures/flickLeft records one ← keystroke.
+
+Revised after TASK-16's bench: flicks now measure index-tip travel relative to the wrist (normalised by the hand scale at the start of the window, so tipping the hand still counts), require 150 ms of rest before and a 100 ms hold after, and the pointing pose needs clear margins (index reach > 0.6, others < 0.2). Fixtures resynthesised as wrist turns (roll) and tips (pitch); new scenarios: slow wrist turn, moving a pointing hand.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

@@ -1,9 +1,9 @@
 # make verify is the single entry point for humans, agents and CI.
 SOURCES := Sources Tests Plugins Package.swift
 
-.PHONY: verify verify-fast format format-check lint debt build test fence app fixtures
+.PHONY: verify verify-fast format format-check lint debt build test fence app fixtures bench
 
-verify: format-check lint debt build test fixtures fence app
+verify: format-check lint debt build test fixtures bench fence app
 
 # Pre-commit subset: no app packaging, no fence proof.
 verify-fast: format-check lint debt test
@@ -28,6 +28,12 @@ test:
 
 fixtures:
 	scripts/fixtures.sh check
+
+# False actions on the corpus must not rise; see bench/baseline.json.
+bench:
+	swift build -c release -q --product handyctl
+	$$(swift build -c release --show-bin-path)/handyctl bench corpus >/dev/null || \
+		($$(swift build -c release --show-bin-path)/handyctl bench corpus; exit 1)
 
 fence:
 	scripts/prove-fence.sh

@@ -176,11 +176,13 @@ public struct Engine: Sendable {
         frame.hands.first { $0.chirality == settings.pointerHand }
     }
 
-    /// Four fingers extended and the palm turned toward the camera. A resting or typing hand
-    /// curls its fingers or turns its palm down, so it never qualifies.
+    /// Four fingers extended, the palm turned toward the camera and the thumb clear of the index.
+    /// A resting or typing hand curls its fingers or turns its palm down, and an "OK" sign or a
+    /// half-pinch keeps the thumb on the index, so none of them qualify.
     func isOpenPalm(_ hand: HandFeatures) -> Bool {
         [Finger.index, .middle, .ring, .little].allSatisfy(hand.isExtended)
             && hand.palmFacing >= settings.palmFacingMinimum
+            && (hand.pinchIndex.map { $0 > settings.click.previewStart } ?? true)
     }
 
     func isFist(_ hand: HandFeatures) -> Bool {

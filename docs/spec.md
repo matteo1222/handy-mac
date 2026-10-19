@@ -76,12 +76,13 @@ One-shot gestures run only while not engaged, so a pointing hand never fires a s
 
 | Signal | Enter when | Exit when | Notes |
 | --- | --- | --- | --- |
-| Open palm (arming) | 4 fingers extended, palm facing camera, held 300 ms | any finger curls for 150 ms | Progress ring on the cursor while arming |
+| Open palm (arming) | 4 fingers extended, palm facing camera, thumb clear of the index (pinch > 0.6), held 300 ms | any finger curls for 150 ms | Thumb rule keeps an "OK" sign or half-pinch from engaging; progress ring while arming |
 | Pinch (press) | thumb–index distance < 0.25 × hand scale | > 0.40 × hand scale | Hysteresis gap prevents flicker; thresholds learned in calibration |
 | Click vs drag | release within 250 ms and < 8 px motion | otherwise drag starts | Cursor position frozen from pinch onset |
 | Double click | second press within 350 ms, < 12 px away | — | Matches macOS default interval |
 | Scroll | index + middle extended, ring + little curled, 150 ms | pose lost for 150 ms | Scroll velocity = palm velocity × gain; momentum decays 0.92 per frame |
 | Swipe | palm displacement > 25% of frame width in < 400 ms | — | 600 ms refractory after firing |
+| Flick (arrow keys) | clear pointing pose; index tip moves ≥ 0.6 hand scales relative to the wrist within 250 ms, from 150 ms of rest, on a dominant axis | fires after the pose holds 100 ms | Wrist-relative, so moving a pointing hand while talking does not count; 400 ms refractory |
 | One-shot pose | classifier confidence > 0.9 for the hold time (default 500 ms) | — | Must exceed "no gesture" class margin by 0.3 |
 
 ### Cursor mapping

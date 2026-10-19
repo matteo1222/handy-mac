@@ -17,10 +17,12 @@ public struct HandShape: Sendable, Hashable {
     /// How much of a curl happens at the knuckle (MCP) versus the finger joints: 1 is the model's
     /// default; lower keeps the first phalanx straight and folds the fingertips, as in a loose fist.
     public var knuckleBend: Double
+    /// Degrees of wrist flexion; positive tips the fingers toward the camera, so they foreshorten downward.
+    public var pitch: Double
 
     public init(
         curl: FingerValues, pinchIndex: Double = 0, pinchMiddle: Double = 0, yaw: Double = 0, roll: Double = 0,
-        knuckleBend: Double = 1
+        knuckleBend: Double = 1, pitch: Double = 0
     ) {
         self.curl = curl
         self.pinchIndex = pinchIndex
@@ -28,6 +30,7 @@ public struct HandShape: Sendable, Hashable {
         self.yaw = yaw
         self.roll = roll
         self.knuckleBend = knuckleBend
+        self.pitch = pitch
     }
 
     public func blended(to other: HandShape, _ u: Double) -> HandShape {
@@ -38,7 +41,8 @@ public struct HandShape: Sendable, Hashable {
             pinchMiddle: mix(pinchMiddle, other.pinchMiddle),
             yaw: mix(yaw, other.yaw),
             roll: mix(roll, other.roll),
-            knuckleBend: mix(knuckleBend, other.knuckleBend))
+            knuckleBend: mix(knuckleBend, other.knuckleBend),
+            pitch: mix(pitch, other.pitch))
     }
 }
 
@@ -195,8 +199,14 @@ extension HandShape {
     public func pose(at placement: HandPlacement, confidence: Double = 0.9) -> HandPose {
         let yawRadians = yaw * .pi / 180
         let rollRadians = roll * .pi / 180
+        let pitchRadians = pitch * .pi / 180
         let mirror: Double = placement.chirality == .right ? 1 : -1
-        let joints = HandModel.joints(self).map { vector -> JointSample? in
+        let joints = HandModel.joints(self).map { joint -> JointSample? in
+            var vector = joint
+            (vector.y, vector.z) = (
+                joint.y * cos(pitchRadians) + joint.z * sin(pitchRadians),
+                -joint.y * sin(pitchRadians) + joint.z * cos(pitchRadians)
+            )
             let yawed = vector.x * cos(yawRadians) + vector.z * sin(yawRadians)
             let x = yawed * mirror
             let rolledX = x * cos(rollRadians) - vector.y * sin(rollRadians) * mirror

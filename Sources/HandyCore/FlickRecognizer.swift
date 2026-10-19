@@ -16,20 +16,39 @@ public struct FlickSettings: Sendable, Hashable, Codable {
     public var refractory = 0.4
     /// The index-only pose must be held this long before a flick counts.
     public var settle = 0.1
+    /// A flick starts from rest: in this long before it, the tip moved less than `restTravel` hand scales.
+    /// Gesturing while talking keeps the hand moving, so it rarely shows the still-then-snap of a flick.
+    public var rest = 0.15
+    public var restTravel = 0.15
+    /// A flick ends still pointing: it fires only after the pose has held this long past the travel,
+    /// so a hand leaving the pointing pose mid-turn does not fire.
+    public var confirm = 0.1
 
     public init() {}
 }
 
 /// Index-finger flicks in four directions, from the pointing pose, while not engaged.
+///
+/// A flick is the fingertip moving relative to the wrist (a quick wrist turn or tip), measured in
+/// hand scales. Moving the whole hand while pointing, as people do when talking, moves the wrist
+/// with the tip and does not count.
 public struct FlickRecognizer: Sendable, Equatable {
     public var settings: FlickSettings
     private var history: [Sample] = []
     private var poseSince: Double?
     private var quietUntil = -Double.infinity
+    private var pending: Pending?
+
+    struct Pending: Sendable, Equatable {
+        var direction: Direction
+        var at: Double
+    }
 
     struct Sample: Sendable, Equatable {
         var t: Double
+        /// Index tip relative to the wrist, in frame heights.
         var tip: Point
+        var scale: Double
     }
 
     public init(settings: FlickSettings) {
@@ -39,31 +58,48 @@ public struct FlickRecognizer: Sendable, Equatable {
     public mutating func reset() {
         history = []
         poseSince = nil
+        pending = nil
     }
 
     /// Feed the pointer hand (or nil when absent); returns the direction that fires on this frame.
     public mutating func update(_ hand: HandFeatures?, at t: Double) -> Direction? {
-        guard let hand, Self.isPointing(hand), let tip = hand[.indexTip] else {
+        guard let hand, Self.isPointing(hand), let indexTip = hand[.indexTip], let wrist = hand[.wrist] else {
             reset()
             return nil
         }
         let since = poseSince ?? t
         poseSince = since
-        history.append(Sample(t: t, tip: tip))
-        history.removeAll { t - $0.t > settings.window }
-        guard t >= quietUntil, t - since >= settings.settle, let first = history.first else { return nil }
-        let travel = (tip - first.tip) / hand.scale
+        // Normalise by the scale at the start of the window: tipping the hand foreshortens the palm
+        // as much as the finger, so dividing by the current scale would hide the flick.
+        if let pending {
+            guard t - pending.at >= settings.confirm else { return nil }
+            self.pending = nil
+            return pending.direction
+        }
+        let tip = indexTip - wrist
+        history.append(Sample(t: t, tip: tip, scale: hand.scale))
+        history.removeAll { t - $0.t > settings.window + settings.rest }
+        guard t >= quietUntil, t - since >= settings.settle + settings.rest,
+            let first = history.first(where: { t - $0.t <= settings.window })
+        else { return nil }
+        let before = history.filter { $0.t <= first.t && first.t - $0.t <= settings.rest }
+        let restless = before.contains { ($0.tip - first.tip).length / first.scale > settings.restTravel }
+        guard !restless else { return nil }
+        let travel = (tip - first.tip) / first.scale
         let along = max(abs(travel.x), abs(travel.y))
         let across = min(abs(travel.x), abs(travel.y))
         guard along >= settings.distance, along >= settings.dominance * across else { return nil }
         quietUntil = t + settings.refractory
         history = []
-        if abs(travel.x) > abs(travel.y) { return travel.x > 0 ? .right : .left }
-        return travel.y > 0 ? .down : .up
+        let direction: Direction =
+            abs(travel.x) > abs(travel.y) ? (travel.x > 0 ? .right : .left) : (travel.y > 0 ? .down : .up)
+        pending = Pending(direction: direction, at: t)
+        return nil
     }
 
-    /// Index extended, the other three fingers curled.
+    /// Clearly pointing: the index well extended and the other three well curled. A margin on both
+    /// sides of the "extended" line keeps a loosely relaxed hand from counting.
     public static func isPointing(_ hand: HandFeatures) -> Bool {
-        hand.isExtended(.index) && ![Finger.middle, .ring, .little].contains(where: hand.isExtended)
+        hand.reach.index > 0.6 && [Finger.middle, .ring, .little].allSatisfy { hand.reach[$0] < 0.2 }
     }
 }

@@ -5,13 +5,14 @@ import HandyCore
 ///
 /// A hand script is a list of steps separated by spaces:
 ///
-///     pose[:duration][@x,y][->x,y][~size]
+///     pose[:duration][@x,y][->x,y][~size][/roll][^pitch]
 ///
 /// - `pose` is a `PoseName` raw value, or `none` for no hand.
 /// - `duration` is `300ms` or `0.3s` (default 300ms).
 /// - `@x,y` sets the wrist position at the start of the step; `->x,y` moves it linearly to that
 ///   position by the end. Positions are in frame-height units; the default is the previous end.
 /// - `~size` sets the hand size (wrist to middle MCP, frame heights).
+/// - `/roll` and `^pitch` turn the hand (degrees in the image plane) or tip it toward the camera.
 ///
 /// The shape blends from the previous step's pose over `transition`, then holds.
 /// A face script is the same with yaw degrees in place of the pose: `0:1s 45:500ms none:300ms`.
@@ -22,6 +23,30 @@ public struct Clip: Sendable, Equatable {
         public var start: Point?
         public var end: Point?
         public var size: Double?
+        /// Degrees added to the pose's roll and pitch, to turn or tip the hand.
+        public var roll: Double?
+        public var pitch: Double?
+
+        public init(
+            pose: PoseName?, duration: Double, start: Point?, end: Point?, size: Double?, roll: Double? = nil,
+            pitch: Double? = nil
+        ) {
+            self.pose = pose
+            self.duration = duration
+            self.start = start
+            self.end = end
+            self.size = size
+            self.roll = roll
+            self.pitch = pitch
+        }
+
+        /// The step's hand shape with its roll and pitch offsets applied.
+        public var shape: HandShape? {
+            guard var shape = pose?.shape else { return nil }
+            shape.roll += roll ?? 0
+            shape.pitch += pitch ?? 0
+            return shape
+        }
     }
 
     public struct HandTrack: Sendable, Equatable {
@@ -95,6 +120,8 @@ extension Clip {
             defer { rest = rest[..<range.lowerBound] }
             return rest[range.upperBound...]
         }
+        let pitch = try split("^").map { s throws(ClipParseError) in try number(s, in: token) }
+        let roll = try split("/").map { s throws(ClipParseError) in try number(s, in: token) }
         let size = try split("~").map { s throws(ClipParseError) in try number(s, in: token) }
         let end = try split("->").map { s throws(ClipParseError) in try point(s, in: token) }
         let start = try split("@").map { s throws(ClipParseError) in try point(s, in: token) }
@@ -110,7 +137,7 @@ extension Clip {
             throw ClipParseError(description: "unknown pose \"\(name)\" in \"\(token)\"; known: none, \(names)")
         }
         let duration = try parts.count > 1 ? parseDuration(parts[1]) : 0.3
-        return Step(pose: pose, duration: duration, start: start, end: end, size: size)
+        return Step(pose: pose, duration: duration, start: start, end: end, size: size, roll: roll, pitch: pitch)
     }
 
     static func parseDuration(_ text: String) throws(ClipParseError) -> Double {
