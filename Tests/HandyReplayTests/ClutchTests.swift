@@ -49,3 +49,14 @@ import Testing
     #expect(near > 0.3 && near < 1)
     #expect(pinched == 1)
 }
+
+@Test func otherHandOpenPalmForTwoSecondsShowsTheCheatSheetAndLoweringItHides() throws {
+    let clip = Clip(hands: [
+        try Clip.parseHand("relaxed:3s", chirality: .right),
+        try Clip.parseHand("openPalm:2500ms@0.5,0.75 none:1s", chirality: .left),
+    ])
+    let events = Replayer.run(Synthesizer.stream(clip)).map(\.event)
+    #expect(events.filter { $0 == .cheatSheet(shown: true) }.count == 1)
+    #expect(events.filter { $0 == .cheatSheet(shown: false) }.count == 1)
+    #expect(!events.contains(.modeChanged(to: .arming)), "the other hand never engages")
+}

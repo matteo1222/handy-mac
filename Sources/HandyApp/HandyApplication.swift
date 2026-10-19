@@ -67,6 +67,7 @@ struct MenuBarContent: View {
                 }
             }
         }
+        Button("Cheat Sheet (\(GlobalHotKey.cheatSheetDisplay))") { model.toggleCheatSheet() }
         Button("Tutorial…") { model.showOnboarding() }
         Button("Settings…") {
             NSApplication.shared.activate()

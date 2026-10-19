@@ -12,6 +12,7 @@ public struct Engine: Sendable {
     private var flicks: FlickRecognizer
     private var swipes: SwipeRecognizer
     private var oops: OopsRecognizer
+    private var cheatSheet = CheatSheetRecognizer()
     private let classifier: PoseClassifier
 
     public init(
@@ -63,15 +64,21 @@ public struct Engine: Sendable {
     private mutating func handle(_ frame: FrameFeatures) -> [Event] {
         guard state != .off else { return [] }
         attention.observe(frame.face, at: frame.t)
-        if hardStop.update(frame) { return releaseHeld(in: state) + transition(to: .off) }
+        if hardStop.update(frame) {
+            return releaseHeld(in: state) + cheatSheet.hide() + transition(to: .off)
+        }
+        let otherOpen = frame.hands.contains { $0.chirality != settings.pointerHand && isOpenPalm($0) }
+        let sheet = cheatSheet.update(otherHandOpen: otherOpen, at: frame.t)
         switch state {
-        case .off: return []
-        case .watching: return watching(frame)
+        case .off: return sheet
+        case .watching: return sheet + watching(frame)
         case .arming(let current):
-            return attention.allowsEngaging(at: frame.t) ? arming(current, frame) : transition(to: .watching)
+            return sheet
+                + (attention.allowsEngaging(at: frame.t) ? arming(current, frame) : transition(to: .watching))
         case .engaged(let current):
-            return attention.hasLookedAway(at: frame.t)
-                ? releaseHeld(in: state) + transition(to: .watching) : engaged(current, frame)
+            return sheet
+                + (attention.hasLookedAway(at: frame.t)
+                    ? releaseHeld(in: state) + transition(to: .watching) : engaged(current, frame))
         }
     }
 
@@ -354,6 +361,8 @@ extension Engine {
         case oops
         /// The command palette opened, changed highlight, fired a slot or closed.
         case palette(PaletteEvent)
+        /// Show or hide the cheat sheet (the other hand's open palm held two seconds).
+        case cheatSheet(shown: Bool)
     }
 
     public struct Status: Sendable, Equatable, Codable {

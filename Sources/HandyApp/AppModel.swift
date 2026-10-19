@@ -30,6 +30,8 @@ public final class AppModel {
     @ObservationIgnored var hud: HUDPanel?
     @ObservationIgnored private lazy var cursorRing = CursorRingPanel()
     @ObservationIgnored private lazy var paletteOverlay = PalettePanel()
+    @ObservationIgnored private lazy var cheatSheetPanel = CheatSheetPanel()
+    @ObservationIgnored private var cheatSheetHotKey: GlobalHotKey?
     @ObservationIgnored var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?
@@ -86,6 +88,23 @@ public final class AppModel {
         output.perform(action.action)
         lastAction = action.title
         updateHUD()
+    }
+
+    /// Shows or hides the cheat sheet for the frontmost app.
+    func setCheatSheet(_ shown: Bool) {
+        guard shown else { return cheatSheetPanel.hide() }
+        let app = NSWorkspace.shared.frontmostApplication
+        cheatSheetPanel.show(
+            entries: GestureGuide.entries(bindings: router.bindings, app: app?.bundleIdentifier),
+            appName: app?.localizedName)
+    }
+
+    func toggleCheatSheet() {
+        setCheatSheet(!cheatSheetPanel.isVisible)
+    }
+
+    var guideEntries: [GuideEntry] {
+        GestureGuide.entries(bindings: router.bindings, app: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
     }
 
     private func showPalette(_ event: PaletteEvent) {
@@ -217,6 +236,11 @@ extension AppModel {
             [weak self] in
             self?.send(.stop)
         }
+        cheatSheetHotKey = GlobalHotKey(
+            keyCode: GlobalHotKey.cheatSheetKeyCode, modifiers: GlobalHotKey.stopModifiers
+        ) { [weak self] in
+            self?.toggleCheatSheet()
+        }
         do {
             controlServer = try ControlServer { [weak self] request in
                 await self?.handle(request) ?? ControlResponse(ok: false, error: "app is shutting down")
@@ -270,6 +294,7 @@ extension AppModel {
             if let description = timed.event.actionDescription { lastAction = description }
             if timed.event == .oops { recordOops(at: timed.t) }
             if case .palette(let event) = timed.event { showPalette(event) }
+            if case .cheatSheet(let shown) = timed.event { setCheatSheet(shown) }
             let app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
             for action in router.actions(for: timed.event, app: app) {
                 output.perform(action)
@@ -344,7 +369,7 @@ extension Engine.Event {
         case .click(.right, _): "Right click"
         case .dragBegan: "Drag"
         case .dragEnded: "Drop"
-        case .scroll, .oneShot, .flick, .swipe, .zoom, .oops, .palette: nil
+        case .scroll, .oneShot, .flick, .swipe, .zoom, .oops, .palette, .cheatSheet: nil
         }
     }
 }

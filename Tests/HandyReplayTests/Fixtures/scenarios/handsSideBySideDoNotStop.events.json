@@ -14,5 +14,13 @@
       }
     },
     "t" : 0.3
+  },
+  {
+    "event" : {
+      "cheatSheet" : {
+        "shown" : true
+      }
+    },
+    "t" : 2
   }
 ]

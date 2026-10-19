@@ -31,6 +31,7 @@ enum Screenshots {
             "onboarding": { AnyView(OnboardingContactSheet()) },
             "palette": { AnyView(PaletteView(layout: model.settings.palette.standard, highlighted: 2)) },
             "settings": { AnyView(SettingsView(model: model)) },
+            "cheat-sheet": { AnyView(CheatSheetView(entries: model.guideEntries, appName: "Safari")) },
             "cursor-ring": {
                 AnyView(
                     HStack {
@@ -45,7 +46,7 @@ enum Screenshots {
     }
 
     nonisolated static let targets = [
-        "hud", "hud-gallery", "cursor-ring", "settings", "onboarding", "onboarding:<step>", "palette",
+        "hud", "hud-gallery", "cursor-ring", "settings", "onboarding", "onboarding:<step>", "palette", "cheat-sheet",
     ]
 
     static func render(_ target: String, model: AppModel, to url: URL) throws {
