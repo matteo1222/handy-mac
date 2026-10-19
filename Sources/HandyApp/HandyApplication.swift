@@ -40,6 +40,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.activate()
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.flushUsage()
+    }
 }
 
 struct MenuBarContent: View {
@@ -78,6 +82,7 @@ struct MenuBarContent: View {
             NSApplication.shared.activate()
             openWindow(id: WindowID.debugOverlay)
         }
+        Text(UsageSummary.line(model.usageToday))
         Button("Accidental-Action Log (\(model.oopsCount))…") {
             NSWorkspace.shared.open(AppPaths.accidentalActionLog)
         }
@@ -132,4 +137,13 @@ extension Engine.Mode {
 /// The menu bar's projection of the action catalog.
 enum ActionMenu {
     static let items = NamedAction.allCases
+}
+
+enum UsageSummary {
+    /// "Today: 23 min engaged, 0.4 accidental per hour".
+    static func line(_ stats: UsageStats) -> String {
+        let minutes = Int(stats.activeSeconds / 60)
+        let rate = stats.accidentalPerHour.map { String(format: "%.1f accidental per hour", $0) } ?? "no accidents yet"
+        return "Today: \(minutes) min engaged, \(rate)"
+    }
 }

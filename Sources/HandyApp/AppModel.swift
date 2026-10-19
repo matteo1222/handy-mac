@@ -33,6 +33,10 @@ public final class AppModel {
     @ObservationIgnored private lazy var cheatSheetPanel = CheatSheetPanel()
     @ObservationIgnored private var cheatSheetHotKey: GlobalHotKey?
     @ObservationIgnored lazy var updates = Updates()
+    @ObservationIgnored private var usage = UsageMeter()
+    @ObservationIgnored private var usageFlush: Task<Void, Never>?
+    /// Today's usage, for the menu.
+    private(set) var usageToday = UsageStore.load()[UsageStore.day(Date())] ?? UsageStats()
     @ObservationIgnored var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?
@@ -204,6 +208,17 @@ extension AppModel {
         }
     }
 
+    /// Saves the usage counted since the last flush into today's entry.
+    func flushUsage() {
+        let stats = usage.drain()
+        do {
+            try UsageStore.add(stats)
+        } catch {
+            Self.log.error("saving usage failed: \(error.localizedDescription)")
+        }
+        usageToday = UsageStore.load()[UsageStore.day(Date())] ?? UsageStats()
+    }
+
     /// Shows a problem for a few seconds.
     func show(transient problem: Problem) {
         transientProblem = problem
@@ -250,6 +265,12 @@ extension AppModel {
             Self.log.error("control socket unavailable: \(String(describing: error))")
         }
         if needsOnboarding { showOnboarding() }
+        usageFlush = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                self?.flushUsage()
+            }
+        }
     }
 
     public func send(_ command: Engine.Command) {
@@ -260,6 +281,7 @@ extension AppModel {
     func process(_ frame: LandmarkFrame) {
         lastFrameTime = frame.t
         recentFrames.append(frame)
+        if !injecting { usage.tick(at: frame.t) }
         if let first = recentFrames.first, frame.t - first.t > OopsLog.keep + 1 || frame.t < first.t {
             recentFrames.removeAll { frame.t - $0.t > OopsLog.keep + 1 || $0.t > frame.t }
         }
@@ -288,6 +310,7 @@ extension AppModel {
     private func apply(_ events: [TimedEvent]) {
         injectedEvents?.append(contentsOf: events)
         for timed in events {
+            if !injecting { usage.observe(timed.event) }
             recentEvents.append(timed)
             onboarding?.handle(timed.event)
             if case .modeChanged(let mode) = timed.event { changeMode(to: mode) }

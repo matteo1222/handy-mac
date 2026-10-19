@@ -17,6 +17,23 @@ public enum ControlRequest: Codable, Sendable, Equatable {
     case applyFix
     /// Runs a catalog action (a `NamedAction` raw value); with `record` the output is captured, not posted.
     case perform(action: String, record: Bool)
+    /// Usage counts per day and in total, for measuring accidental actions per hour.
+    case usage
+}
+
+/// Local usage counts: active (engaged) time, actions by kind and oops, per day and in total.
+public struct UsageReport: Codable, Sendable, Equatable {
+    public var days: [String: UsageStats]
+    public var total: UsageStats
+    public var accidentalPerHour: Double?
+
+    public init(days: [String: UsageStats]) {
+        self.days = days
+        var total = UsageStats()
+        for day in days.values { total.merge(day) }
+        self.total = total
+        accidentalPerHour = total.accidentalPerHour.map { ($0 * 100).rounded() / 100 }
+    }
 }
 
 /// What an injected clip did inside the app.
@@ -35,12 +52,17 @@ public struct ControlResponse: Codable, Sendable, Equatable {
     public var error: String?
     public var state: AppStateSnapshot?
     public var injected: InjectResult?
+    public var usage: UsageReport?
 
-    public init(ok: Bool = true, error: String? = nil, state: AppStateSnapshot? = nil, injected: InjectResult? = nil) {
+    public init(
+        ok: Bool = true, error: String? = nil, state: AppStateSnapshot? = nil, injected: InjectResult? = nil,
+        usage: UsageReport? = nil
+    ) {
         self.ok = ok
         self.error = error
         self.state = state
         self.injected = injected
+        self.usage = usage
     }
 }
 

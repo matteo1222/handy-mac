@@ -34,19 +34,7 @@ public struct BenchReport: Codable, Sendable, Equatable {
 
 public enum Bench {
     /// What counts as an action reaching the user: engaging, clicking, dragging, scrolling, keys.
-    public static func actionKind(_ event: Engine.Event) -> String? {
-        switch event {
-        case .click: "click"
-        case .dragBegan: "drag"
-        case .scroll(_, _, .began): "scroll"
-        case .oneShot(let pose): "oneShot.\(pose.rawValue)"
-        case .flick(let direction): "flick.\(direction.rawValue)"
-        case .swipe(let direction): "swipe.\(direction.rawValue)"
-        case .zoom: "zoom"
-        case .oops: "oops"
-        default: nil
-        }
-    }
+    public static func actionKind(_ event: Engine.Event) -> String? { event.actionKind }
 
     /// Counts false actions and timing over a stream of frames whose labels say what is no-gesture.
     public struct Accumulator {

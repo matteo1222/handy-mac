@@ -34,6 +34,22 @@ extension AppModel {
             return attempt("screenshot") { try Screenshots.render(target, model: self, to: URL(filePath: path)) }
         case .record(let on):
             return attempt("recording") { try tracking.setRecording(on) }
+        case .simulateCamera, .applyFix:
+            return handleCamera(request)
+        case .usage:
+            flushUsage()
+            return ControlResponse(state: snapshot, usage: UsageReport(days: UsageStore.load()))
+        case .perform(let name, let record):
+            return perform(named: name, record: record)
+        case .inject(let frames, let record, let realtime):
+            guard !injecting else { return ControlResponse(ok: false, error: "already injecting", state: snapshot) }
+            let result = await inject(frames, record: record, realtime: realtime)
+            return ControlResponse(state: snapshot, injected: result)
+        }
+    }
+
+    private func handleCamera(_ request: ControlRequest) -> ControlResponse {
+        switch request {
         case .simulateCamera(let event):
             return attempt("camera") { try simulate(named: event) }
         case .applyFix:
@@ -41,12 +57,8 @@ extension AppModel {
                 guard let fix = problem?.fix else { throw ControlError("no problem with a fix right now") }
                 apply(fix)
             }
-        case .perform(let name, let record):
-            return perform(named: name, record: record)
-        case .inject(let frames, let record, let realtime):
-            guard !injecting else { return ControlResponse(ok: false, error: "already injecting", state: snapshot) }
-            let result = await inject(frames, record: record, realtime: realtime)
-            return ControlResponse(state: snapshot, injected: result)
+        default:
+            return ControlResponse(ok: false, error: "not a camera request", state: snapshot)
         }
     }
 

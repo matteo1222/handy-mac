@@ -144,3 +144,15 @@ struct Perform: ParsableCommand {
 }
 
 extension NamedAction: ExpressibleByArgument {}
+
+struct Report: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Print local usage counts: engaged time, actions by kind and accidental actions per hour.")
+
+    @Option(help: "Control socket path.")
+    var socket = ControlSocket.defaultPath
+
+    func run() throws {
+        try reply(to: .usage, socket: socket)
+    }
+}
