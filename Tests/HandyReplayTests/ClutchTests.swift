@@ -30,3 +30,22 @@ import Testing
     #expect(session.engine.mode == .engaged)
     #expect(session.send(.stop, at: 1).map(\.event) == [.modeChanged(to: .off)])
 }
+
+@Test func clickMeterRisesAsThePinchClosesAndFillsAtThePress() throws {
+    func meter(_ pose: PoseName) throws -> Double {
+        var session = Session()
+        for frame in Synthesizer.render(Clip(hands: [try Clip.parseHand("\(pose.rawValue):300ms", chirality: .right)]))
+        {
+            _ = session.process(frame)
+        }
+        let hand = try #require(session.lastFeatures?.hands.first)
+        return SensitivityMeter.read(
+            .click, hand: hand, status: session.engine.status(at: 0.3), settings: session.engine.settings)
+    }
+    let open = try meter(.openPalm)
+    let near = try meter(.nearPinch)
+    let pinched = try meter(.pinch)
+    #expect(open == 0)
+    #expect(near > 0.3 && near < 1)
+    #expect(pinched == 1)
+}

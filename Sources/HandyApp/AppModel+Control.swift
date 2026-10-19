@@ -66,6 +66,7 @@ extension AppModel {
         if record { output = OutputDriver(sink: recorder, environment: VirtualPointerEnvironment()) }
         let wasOff = mode == .off
         session = Session(engine: Engine(mode: .watching, settings: session.engine.settings))
+        applyTuning()
         mode = .watching
         let start = ContinuousClock.now
         for frame in frames {
@@ -77,6 +78,7 @@ extension AppModel {
         let events = injectedEvents ?? []
         output = liveOutput
         session = Session(engine: Engine(mode: wasOff ? .off : .watching, settings: session.engine.settings))
+        applyTuning()
         mode = wasOff ? .off : .watching
         injectedEvents = nil
         updateHUD()

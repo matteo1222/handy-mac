@@ -35,6 +35,11 @@ public struct Session: Sendable {
         engine.settings = settings
     }
 
+    /// New joint filtering and quality-gate settings, from the next track on.
+    public mutating func configure(tracker settings: HandTracker.Settings) {
+        tracker.settings = settings
+    }
+
     public mutating func send(_ command: Engine.Command, at t: Double) -> [TimedEvent] {
         engine.handle(.command(command)).map { TimedEvent(t: t, event: $0) }
     }

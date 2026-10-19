@@ -39,17 +39,59 @@ public final class AppModel {
     @ObservationIgnored private var onboardingWindow: NSWindow?
     private static let log = Logger(subsystem: "dev.handy", category: "app")
 
+    /// The user's preset, sensitivity and camera. Saved and applied on every change.
+    var settings = SettingsStore.load() {
+        didSet {
+            guard settings != oldValue else { return }
+            do {
+                try SettingsStore.save(settings)
+            } catch {
+                Self.log.error("saving settings failed: \(error.localizedDescription)")
+            }
+            applyTuning()
+            if settings.cameraID != oldValue.cameraID {
+                tracking.preferredCameraID = settings.cameraID
+                if mode != .off { tracking.restart() }
+            }
+        }
+    }
+    @ObservationIgnored var calibration = CalibrationStore.load()
+    /// Live sensitivity meters, refreshed only while the settings window shows them.
+    private(set) var meters: [SensitivityKey: Double] = [:]
+    @ObservationIgnored var metersVisible = false
+    @ObservationIgnored private var meterTick = 0
+
     public init() {
         var process: (LandmarkFrame) -> Void = { _ in }
         var changed: () -> Void = {}
         tracking = LiveTracking(onFrame: { process($0) }, onChange: { changed() })
-        tracking.preferredCameraID = UserDefaults.standard.string(forKey: Self.cameraKey)
+        tracking.preferredCameraID = settings.cameraID
         process = { [weak self] frame in
             guard let self, !self.injecting else { return }
             self.process(frame)
         }
         changed = { [weak self] in self?.updateHUD() }
-        if let calibration = CalibrationStore.load() { applyCalibration(calibration) }
+        applyTuning()
+    }
+
+    /// Preset, then calibration, then sensitivity, into the running session.
+    func applyTuning() {
+        let tuning = settings.tuning(calibration: calibration)
+        var engine = tuning.engine
+        engine.frameAspect = session.engine.settings.frameAspect
+        session.configure(engine)
+        session.configure(tracker: tuning.tracker)
+    }
+
+    func updateMeters() {
+        meterTick += 1
+        guard metersVisible, meterTick % 3 == 0 else { return }
+        let hand = session.lastFeatures?.hands.first { $0.chirality == session.engine.settings.pointerHand }
+        let status = session.engine.status(at: lastFrameTime)
+        meters = Dictionary(
+            uniqueKeysWithValues: SensitivityKey.allCases.map { key in
+                (key, SensitivityMeter.read(key, hand: hand, status: status, settings: session.engine.settings))
+            })
     }
 
 }
@@ -95,13 +137,8 @@ extension AppModel {
         } catch {
             Self.log.error("saving calibration failed: \(error.localizedDescription)")
         }
-        applyCalibration(calibration)
-    }
-
-    private func applyCalibration(_ calibration: Calibration) {
-        var settings = session.engine.settings
-        calibration.apply(to: &settings)
-        session.configure(settings)
+        self.calibration = calibration
+        applyTuning()
     }
 
     var needsOnboarding: Bool { !UserDefaults.standard.bool(forKey: Self.onboardedKey) }
@@ -109,16 +146,10 @@ extension AppModel {
 
 extension AppModel {
 
-    private static let cameraKey = "cameraID"
-
     /// The chosen camera, persisted across launches. Switching restarts a running camera.
     var cameraID: String? {
-        get { tracking.preferredCameraID }
-        set {
-            tracking.preferredCameraID = newValue
-            UserDefaults.standard.set(newValue, forKey: Self.cameraKey)
-            if mode != .off { tracking.restart() }
-        }
+        get { settings.cameraID }
+        set { settings.cameraID = newValue }
     }
 
     private func recordOops(at t: Double) {
@@ -197,6 +228,7 @@ extension AppModel {
         }
         updateHUD()
         updateCursorRing()
+        updateMeters()
     }
 
     private func updateCursorRing() {

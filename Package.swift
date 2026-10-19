@@ -48,7 +48,8 @@ let package = Package(
         ),
         .executableTarget(name: "FenceCheck", swiftSettings: strict),
         .plugin(name: "FencePlugin", capability: .buildTool(), dependencies: ["FenceCheck"]),
-        .testTarget(name: "HandyCoreTests", dependencies: ["HandyCore"], swiftSettings: strict),
+        .testTarget(
+            name: "HandyCoreTests", dependencies: ["HandyCore"], resources: [.copy("Fixtures")], swiftSettings: strict),
         .testTarget(
             name: "HandyReplayTests",
             dependencies: ["HandyCore", "HandyReplay"],

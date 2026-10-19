@@ -1,3 +1,4 @@
+import HandyCore
 import HandyOutput
 import HandyPerception
 import SwiftUI
@@ -8,6 +9,8 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            PresetSection(model: model)
+            SensitivitySection(model: model)
             CameraSection(model: model)
             DictationSection()
         }
@@ -90,5 +93,96 @@ struct DictationSection: View {
             .foregroundStyle(.secondary)
         }
         .onAppear { shortcut = DictationShortcut.current() }
+    }
+}
+
+struct PresetSection: View {
+    let model: AppModel
+
+    var body: some View {
+        Section {
+            Picker("Preset", selection: Binding(get: { model.settings.preset }, set: { model.settings.preset = $0 })) {
+                ForEach(Preset.allCases, id: \.self) { preset in
+                    Text(preset.title).tag(preset)
+                }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Where you sit")
+        } footer: {
+            Text(model.settings.preset.explanation)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct SensitivitySection: View {
+    let model: AppModel
+
+    var body: some View {
+        Section {
+            ForEach(SensitivityKey.allCases, id: \.self) { key in
+                SensitivityRow(
+                    key: key, value: Binding(get: { model.settings[key] }, set: { model.settings[key] = $0 }),
+                    meter: model.meters[key] ?? 0)
+            }
+        } header: {
+            Text("Sensitivity")
+        } footer: {
+            Text("The bar shows your hand live; it fills at the point where the gesture triggers.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .onAppear { model.metersVisible = true }
+        .onDisappear { model.metersVisible = false }
+    }
+}
+
+struct SensitivityRow: View {
+    let key: SensitivityKey
+    @Binding var value: Double
+    let meter: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(key.title)
+                Spacer()
+                Text(label).foregroundStyle(.secondary).monospacedDigit()
+            }
+            Slider(value: $value, in: 0...1) {
+                Text(key.title)
+            } minimumValueLabel: {
+                Image(systemName: "tortoise").accessibilityLabel("Less sensitive")
+            } maximumValueLabel: {
+                Image(systemName: "hare").accessibilityLabel("More sensitive")
+            }
+            .labelsHidden()
+            Gauge(value: meter) { Text("Live") }
+                .gaugeStyle(.accessoryLinearCapacity)
+                .labelsHidden()
+                .tint(meter >= 1 ? .green : .accentColor)
+                .accessibilityLabel("\(key.title) live level")
+                .accessibilityValue(meter >= 1 ? "Triggering" : "\(Int(meter * 100)) percent")
+        }
+    }
+
+    private var label: String {
+        switch value {
+        case ..<0.35: "Less sensitive"
+        case 0.65...: "More sensitive"
+        default: "Default"
+        }
+    }
+}
+
+extension Preset {
+    var explanation: String {
+        switch self {
+        case .desk: "About arm's length from the built-in camera."
+        case .couch: "1.5 to 3 m away, with an external webcam or Continuity Camera."
+        case .presenter: "Steadier pointer and more deliberate engage and keys, for slides and demos."
+        }
     }
 }
