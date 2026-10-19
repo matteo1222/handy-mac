@@ -16,6 +16,7 @@ struct HandyCtl: AsyncParsableCommand {
             Windows.self,
             Inject.self,
             Camera.self,
+            Perform.self,
             // Headless engine
             Synth.self,
             Replay.self,

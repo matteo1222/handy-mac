@@ -123,3 +123,24 @@ struct Camera: ParsableCommand {
         try reply(to: event == "fix" ? .applyFix : .simulateCamera(event: event), socket: socket)
     }
 }
+
+struct Perform: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Run one of Handy's catalog actions in the running app.",
+        discussion: "Actions: \(NamedAction.allCases.map(\.rawValue).joined(separator: ", ")).")
+
+    @Argument(help: "The action name.")
+    var action: NamedAction
+
+    @Flag(help: "Capture the output instead of posting it.")
+    var record = false
+
+    @Option(help: "Control socket path.")
+    var socket = ControlSocket.defaultPath
+
+    func run() throws {
+        try reply(to: .perform(action: action.rawValue, record: record), socket: socket)
+    }
+}
+
+extension NamedAction: ExpressibleByArgument {}

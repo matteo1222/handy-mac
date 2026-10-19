@@ -11,6 +11,7 @@ struct SettingsView: View {
         Form {
             PresetSection(model: model)
             SensitivitySection(model: model)
+            PaletteEditor(model: model)
             CameraSection(model: model)
             DictationSection()
         }
@@ -184,5 +185,79 @@ extension Preset {
         case .couch: "1.5 to 3 m away, with an external webcam or Continuity Camera."
         case .presenter: "Steadier pointer and more deliberate engage and keys, for slides and demos."
         }
+    }
+}
+
+/// Palette slots for every app, or for the app that was frontmost when Settings opened.
+struct PaletteEditor: View {
+    let model: AppModel
+    @State private var appID: String?
+    @State private var appName: String?
+
+    nonisolated static let options = NamedAction.allCases
+
+    var body: some View {
+        Section {
+            Picker("Applies to", selection: $appID) {
+                Text("All apps").tag(String?.none)
+                if let frontmost = Self.frontmostApp() {
+                    Text(frontmost.name).tag(Optional(frontmost.id))
+                }
+                ForEach(
+                    model.settings.palette.perApp.keys.sorted().filter { $0 != Self.frontmostApp()?.id }, id: \.self
+                ) {
+                    Text($0).tag(Optional($0))
+                }
+            }
+            ForEach(0..<PaletteLayout.slotCount, id: \.self) { slot in
+                Picker(Self.slotName(slot), selection: binding(for: slot)) {
+                    Text("Empty").tag(NamedAction?.none)
+                    ForEach(Self.options, id: \.self) { action in
+                        Label(action.title, systemImage: action.symbol).tag(Optional(action))
+                    }
+                }
+            }
+            if appID != nil {
+                Button("Use the All Apps Layout Here") {
+                    if let appID { model.settings.palette.perApp[appID] = nil }
+                }
+            }
+        } header: {
+            Text("Command palette")
+        } footer: {
+            Text("While engaged, pinch and hold with your other hand, then move toward a slot.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func binding(for slot: Int) -> Binding<NamedAction?> {
+        Binding(
+            get: { model.settings.palette.layout(for: appID).slots[slot] },
+            set: { action in
+                var layout = model.settings.palette.layout(for: appID)
+                layout.slots[slot] = action
+                if let appID {
+                    model.settings.palette.perApp[appID] = layout
+                } else {
+                    model.settings.palette.standard = layout
+                }
+            })
+    }
+
+    static func slotName(_ slot: Int) -> String {
+        ["Up", "Up right", "Right", "Down right", "Down", "Down left", "Left", "Up left"][slot]
+    }
+
+    /// The app that was in front before Handy, skipping Handy itself.
+    static func frontmostApp() -> (id: String, name: String)? {
+        let app =
+            NSWorkspace.shared.runningApplications.first {
+                $0.isActive == false && $0.activationPolicy == .regular
+                    && $0.bundleIdentifier != Bundle.main.bundleIdentifier
+                    && $0.ownsMenuBar
+            } ?? NSWorkspace.shared.frontmostApplication
+        guard let app, let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier else { return nil }
+        return (id, app.localizedName ?? id)
     }
 }

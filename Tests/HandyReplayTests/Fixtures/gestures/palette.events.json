@@ -1,0 +1,70 @@
+[
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "arming"
+      }
+    },
+    "t" : 0
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "engaged"
+      }
+    },
+    "t" : 0.3
+  },
+  {
+    "event" : {
+      "palette" : {
+        "_0" : {
+          "opened" : {
+
+          }
+        }
+      }
+    },
+    "t" : 1.1
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "palette"
+      }
+    },
+    "t" : 1.1
+  },
+  {
+    "event" : {
+      "palette" : {
+        "_0" : {
+          "highlighted" : {
+            "slot" : 0
+          }
+        }
+      }
+    },
+    "t" : 1.4
+  },
+  {
+    "event" : {
+      "palette" : {
+        "_0" : {
+          "fired" : {
+            "slot" : 0
+          }
+        }
+      }
+    },
+    "t" : 1.466667
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "engaged"
+      }
+    },
+    "t" : 1.466667
+  }
+]

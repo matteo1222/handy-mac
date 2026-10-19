@@ -29,6 +29,7 @@ public final class AppModel {
     @ObservationIgnored private var controlServer: ControlServer?
     @ObservationIgnored var hud: HUDPanel?
     @ObservationIgnored private lazy var cursorRing = CursorRingPanel()
+    @ObservationIgnored private lazy var paletteOverlay = PalettePanel()
     @ObservationIgnored var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?
@@ -49,6 +50,7 @@ public final class AppModel {
                 Self.log.error("saving settings failed: \(error.localizedDescription)")
             }
             applyTuning()
+            router.bindings.palette = settings.palette
             if settings.cameraID != oldValue.cameraID {
                 tracking.preferredCameraID = settings.cameraID
                 if mode != .off { tracking.restart() }
@@ -72,6 +74,27 @@ public final class AppModel {
         }
         changed = { [weak self] in self?.updateHUD() }
         applyTuning()
+        router.bindings.palette = settings.palette
+        AppModel.current = self
+    }
+
+    /// The running app's model, for App Intents.
+    static weak var current: AppModel?
+
+    /// Runs a catalog action now, from the menu bar, an App Intent or handyctl.
+    func perform(_ action: NamedAction) {
+        output.perform(action.action)
+        lastAction = action.title
+        updateHUD()
+    }
+
+    private func showPalette(_ event: PaletteEvent) {
+        let layout = settings.palette.layout(for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+        switch event {
+        case .opened: paletteOverlay.show(layout: layout, highlighted: nil)
+        case .highlighted(let slot): paletteOverlay.show(layout: layout, highlighted: slot)
+        case .fired, .cancelled: paletteOverlay.hide()
+        }
     }
 
     /// Preset, then calibration, then sensitivity, into the running session.
@@ -246,7 +269,9 @@ extension AppModel {
             output.handle(timed.event, at: timed.t)
             if let description = timed.event.actionDescription { lastAction = description }
             if timed.event == .oops { recordOops(at: timed.t) }
-            for action in router.actions(for: timed.event) {
+            if case .palette(let event) = timed.event { showPalette(event) }
+            let app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            for action in router.actions(for: timed.event, app: app) {
                 output.perform(action)
                 lastAction = action.description
                 if output.dictationUnavailable {
@@ -319,7 +344,7 @@ extension Engine.Event {
         case .click(.right, _): "Right click"
         case .dragBegan: "Drag"
         case .dragEnded: "Drop"
-        case .scroll, .oneShot, .flick, .swipe, .zoom, .oops: nil
+        case .scroll, .oneShot, .flick, .swipe, .zoom, .oops, .palette: nil
         }
     }
 }

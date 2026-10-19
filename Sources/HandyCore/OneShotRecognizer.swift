@@ -82,8 +82,11 @@ public struct ActionRouter: Sendable {
         self.bindings = bindings
     }
 
-    public func actions(for event: Engine.Event) -> [Action] {
+    /// `app` is the frontmost app's bundle identifier, for per-app palette slots.
+    public func actions(for event: Engine.Event, app: String? = nil) -> [Action] {
         switch event {
+        case .palette(.fired(let slot)):
+            bindings.palette.layout(for: app).slots[slot].map { [$0.action] } ?? []
         case .oneShot(let pose): bindings.oneShots[pose].map { [$0] } ?? []
         case .flick(let direction): bindings.flicks[direction].map { [$0] } ?? []
         case .swipe(let direction): bindings.swipes[direction].map { [$0] } ?? []

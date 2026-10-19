@@ -27,7 +27,7 @@ public struct ZoomRecognizer: Sendable, Equatable {
     /// `pointer` and `other` are the two hands' pinch states (nil when a hand is absent).
     /// Returns zoom steps for this frame.
     public mutating func update(
-        pointer: (pinched: Bool, at: Point)?, other: (pinched: Bool, at: Point)?, at t: Double
+        pointer: PinchReading?, other: PinchReading?, at t: Double
     ) -> [ZoomDirection] {
         pointerPinchSince = pointer?.pinched == true ? (pointerPinchSince ?? t) : nil
         otherPinchSince = other?.pinched == true ? (otherPinchSince ?? t) : nil

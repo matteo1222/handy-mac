@@ -40,4 +40,6 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case dictation
     /// "No-no" index-finger wag while not engaged: ⌘Z and a false-positive sample.
     case oops
+    /// Other hand pinch-holds while engaged, then moves toward one of eight slots.
+    case palette
 }

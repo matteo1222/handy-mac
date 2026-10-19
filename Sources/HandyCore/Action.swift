@@ -95,16 +95,18 @@ public struct Bindings: Sendable, Hashable, Codable {
     public var swipes: [Direction: Action]
     public var zooms: [ZoomDirection: Action]
     public var oops: Action
+    public var palette: PaletteBindings
 
     public init(
         oneShots: [PoseClass: Action], flicks: [Direction: Action], swipes: [Direction: Action],
-        zooms: [ZoomDirection: Action], oops: Action
+        zooms: [ZoomDirection: Action], oops: Action, palette: PaletteBindings = PaletteBindings()
     ) {
         self.oneShots = oneShots
         self.flicks = flicks
         self.swipes = swipes
         self.zooms = zooms
         self.oops = oops
+        self.palette = palette
     }
 
     public static let defaults = Bindings(

@@ -17,36 +17,39 @@ enum Screenshots {
         }
     }
 
+    /// The view a target names. `onboarding:<step>` picks one tutorial step.
+    static func view(for target: String, model: AppModel) throws -> AnyView {
+        if target.hasPrefix("onboarding:") {
+            guard let step = Tutorial.Step(rawValue: String(target.dropFirst("onboarding:".count))) else {
+                throw Failure.unknownTarget(target)
+            }
+            return AnyView(OnboardingView(model: .preview(at: step)))
+        }
+        let views: [String: () -> AnyView] = [
+            "hud": { AnyView(HUDView(state: model.currentHUD).padding(12)) },
+            "hud-gallery": { AnyView(HUDGallery().padding(12)) },
+            "onboarding": { AnyView(OnboardingContactSheet()) },
+            "palette": { AnyView(PaletteView(layout: model.settings.palette.standard, highlighted: 2)) },
+            "settings": { AnyView(SettingsView(model: model)) },
+            "cursor-ring": {
+                AnyView(
+                    HStack {
+                        ForEach([0.0, 0.33, 0.66, 1.0], id: \.self) { closeness in
+                            CursorRingView(closeness: closeness, pressed: closeness == 1)
+                        }
+                    }.padding(12))
+            },
+        ]
+        guard let make = views[target] else { throw Failure.unknownTarget(target) }
+        return make()
+    }
+
     nonisolated static let targets = [
-        "hud", "hud-gallery", "cursor-ring", "settings", "onboarding", "onboarding:<step>",
+        "hud", "hud-gallery", "cursor-ring", "settings", "onboarding", "onboarding:<step>", "palette",
     ]
 
     static func render(_ target: String, model: AppModel, to url: URL) throws {
-        let view: AnyView
-        switch target {
-        case "hud":
-            view = AnyView(HUDView(state: model.currentHUD).padding(12))
-        case "hud-gallery":
-            view = AnyView(HUDGallery().padding(12))
-        case "onboarding":
-            view = AnyView(OnboardingContactSheet())
-        case let step where step.hasPrefix("onboarding:"):
-            guard let parsed = Tutorial.Step(rawValue: String(step.dropFirst("onboarding:".count))) else {
-                throw Failure.unknownTarget(step)
-            }
-            view = AnyView(OnboardingView(model: .preview(at: parsed)))
-        case "settings":
-            view = AnyView(SettingsView(model: model))
-        case "cursor-ring":
-            view = AnyView(
-                HStack {
-                    ForEach([0.0, 0.33, 0.66, 1.0], id: \.self) { closeness in
-                        CursorRingView(closeness: closeness, pressed: closeness == 1)
-                    }
-                }.padding(12))
-        default:
-            throw Failure.unknownTarget(target)
-        }
+        let view = try self.view(for: target, model: model)
         // Draw through AppKit so materials and glass render as they do on screen.
         let host = NSHostingView(
             rootView: view.environment(\.drawsSolidPill, true).background(Color(nsColor: .windowBackgroundColor)))

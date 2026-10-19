@@ -58,6 +58,15 @@ struct MenuBarContent: View {
         Button(model.mode == .off ? "Start Watching" : "Stop") { model.send(.toggle) }
         Text("Stop from anywhere: \(GlobalHotKey.stopDisplay)")
         Divider()
+        Menu("Actions") {
+            ForEach(ActionMenu.items, id: \.self) { action in
+                Button {
+                    model.perform(action)
+                } label: {
+                    Label(action.title, systemImage: action.symbol)
+                }
+            }
+        }
         Button("Tutorial…") { model.showOnboarding() }
         Button("Settings…") {
             NSApplication.shared.activate()
@@ -89,7 +98,8 @@ struct MenuBarSymbol: Equatable {
     var name: String {
         switch (mode, cameraLive) {
         case (.off, _): "hand.raised.slash"
-        case (.engaged, true), (.dragging, true), (.scrolling, true), (.zooming, true): "hand.raised.circle.fill"
+        case (.engaged, true), (.dragging, true), (.scrolling, true), (.zooming, true), (.palette, true):
+            "hand.raised.circle.fill"
         case (_, true): "hand.raised.circle"
         case (_, false): "hand.raised"
         }
@@ -110,6 +120,12 @@ extension Engine.Mode {
         case .dragging: "Dragging"
         case .scrolling: "Scrolling"
         case .zooming: "Zooming"
+        case .palette: "Palette"
         }
     }
+}
+
+/// The menu bar's projection of the action catalog.
+enum ActionMenu {
+    static let items = NamedAction.allCases
 }

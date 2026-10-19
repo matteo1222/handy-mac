@@ -83,11 +83,17 @@ public struct UserSettings: Sendable, Hashable, Codable {
     public var sensitivity: [SensitivityKey: Double] = [:]
     /// The chosen camera's unique ID; nil uses the system default.
     public var cameraID: String?
+    /// Palette slots everywhere and per app.
+    public var palette = PaletteBindings()
 
-    public init(preset: Preset = .desk, sensitivity: [SensitivityKey: Double] = [:], cameraID: String? = nil) {
+    public init(
+        preset: Preset = .desk, sensitivity: [SensitivityKey: Double] = [:], cameraID: String? = nil,
+        palette: PaletteBindings = PaletteBindings()
+    ) {
         self.preset = preset
         self.sensitivity = sensitivity
         self.cameraID = cameraID
+        self.palette = palette
     }
 
     public subscript(key: SensitivityKey) -> Double {
@@ -96,7 +102,7 @@ public struct UserSettings: Sendable, Hashable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case version, preset, sensitivity, cameraID
+        case version, preset, sensitivity, cameraID, palette
     }
 
     public init(from decoder: any Decoder) throws {
@@ -109,6 +115,7 @@ public struct UserSettings: Sendable, Hashable, Codable {
                 SensitivityKey(rawValue: key).map { ($0, min(max(value, 0), 1)) }
             })
         cameraID = try? container.decode(String.self, forKey: .cameraID)
+        palette = (try? container.decode(PaletteBindings.self, forKey: .palette)) ?? PaletteBindings()
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -118,6 +125,7 @@ public struct UserSettings: Sendable, Hashable, Codable {
         try container.encode(
             Dictionary(uniqueKeysWithValues: sensitivity.map { ($0.key.rawValue, $0.value) }), forKey: .sensitivity)
         try container.encodeIfPresent(cameraID, forKey: .cameraID)
+        try container.encode(palette, forKey: .palette)
     }
 
     /// The preset's tuning, then calibration, then the sensitivity sliders.

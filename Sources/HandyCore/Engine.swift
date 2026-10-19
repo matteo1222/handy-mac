@@ -138,7 +138,8 @@ public struct Engine: Sendable {
                     Engaged(
                         hand: hand.id, lastSeen: t, pointer: pointer, clicks: ClickRecognizer(settings: settings.click),
                         scroll: ScrollRecognizer(settings: settings.scroll),
-                        zoom: ZoomRecognizer(settings: settings.zoom))))
+                        zoom: ZoomRecognizer(settings: settings.zoom),
+                        palette: PaletteRecognizer(settings: settings.palette))))
         }
         state = .arming(arming)
         return []
@@ -149,7 +150,8 @@ public struct Engine: Sendable {
         let t = frame.t
         guard let hand = frame.hands.first(where: { $0.id == engaged.hand }) else {
             guard t - engaged.lastSeen >= settings.handLostGrace else { return [] }
-            return engaged.clicks.cancel() + engaged.scroll.cancel() + transition(to: .watching)
+            return engaged.clicks.cancel() + engaged.scroll.cancel() + engaged.palette.close()
+                + transition(to: .watching)
         }
         engaged.lastSeen = t
         var events: [Event] = []
@@ -162,7 +164,7 @@ public struct Engine: Sendable {
             engaged.pointer.reanchor(at: hand.palmCentroid, t: t)
         } else {
             engaged.fistSince = nil
-            events = zoom(&engaged, hand, frame) ?? pointer(&engaged, hand, at: t)
+            events = palette(&engaged, hand, frame) ?? zoom(&engaged, hand, frame) ?? pointer(&engaged, hand, at: t)
         }
         engaged.closeness = engaged.clicks.closeness(pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle)
         let previousMode = current.pointerMode
@@ -171,17 +173,25 @@ public struct Engine: Sendable {
         return events
     }
 
+    /// The other hand's pinch-hold palette; while open it owns the hands and the cursor stays put.
+    /// Returns nil when the palette is neither open nor changing.
+    private func palette(_ engaged: inout Engaged, _ hand: HandFeatures, _ frame: FrameFeatures) -> [Event]? {
+        let otherPinch = PinchReading(frame.hands.first { $0.id != engaged.hand }, settings: settings.click)
+        let wasOpen = engaged.palette.isOpen
+        let pointerPinching = (hand.pinchIndex ?? 1) < settings.click.press || engaged.zoom.isZooming
+        let events = engaged.palette.update(other: otherPinch, pointerPinching: pointerPinching, at: frame.t)
+        guard wasOpen || engaged.palette.isOpen || !events.isEmpty else { return nil }
+        engaged.pointer.reanchor(at: hand.palmCentroid, t: frame.t)
+        return (wasOpen ? [] : engaged.clicks.abandon() + engaged.scroll.cancel()) + events
+    }
+
     /// Two-hand pinch zoom takes over both hands while it runs; returns nil when not zooming.
     private func zoom(_ engaged: inout Engaged, _ hand: HandFeatures, _ frame: FrameFeatures) -> [Event]? {
-        func pinch(_ hand: HandFeatures?) -> (pinched: Bool, at: Point)? {
-            guard let hand, let thumb = hand[.thumbTip], let index = hand[.indexTip] else { return nil }
-            let pinched =
-                (hand.pinchIndex ?? 1) < settings.click.press && hand.reach.index >= settings.click.minFingerReach
-            return (pinched, (thumb + index) / 2)
-        }
         let other = frame.hands.first { $0.id != engaged.hand }
         let wasZooming = engaged.zoom.isZooming
-        let steps = engaged.zoom.update(pointer: pinch(hand), other: pinch(other), at: frame.t)
+        let steps = engaged.zoom.update(
+            pointer: PinchReading(hand, settings: settings.click), other: PinchReading(other, settings: settings.click),
+            at: frame.t)
         guard engaged.zoom.isZooming else { return wasZooming ? [] : nil }
         var events = wasZooming ? [] : engaged.clicks.abandon() + engaged.scroll.cancel()
         // The cursor stays where it was while zooming.
@@ -237,7 +247,7 @@ public struct Engine: Sendable {
             oops.reset()
         }
         if next != .watching, next.mode != .arming { swipes.reset() }
-        if next == .watching, [.engaged, .dragging, .scrolling, .zooming].contains(previous) {
+        if next == .watching, [.engaged, .dragging, .scrolling, .zooming, .palette].contains(previous) {
             oneShot.blockUntilRelease()
         }
         if next == .off {
@@ -259,6 +269,7 @@ extension Engine {
         case dragging
         case scrolling
         case zooming
+        case palette
     }
 
     public enum State: Sendable, Equatable {
@@ -296,9 +307,11 @@ extension Engine {
 
         public var scroll: ScrollRecognizer
         public var zoom: ZoomRecognizer
+        public var palette: PaletteRecognizer
 
-        /// Engaged, dragging, scrolling or zooming, for the HUD.
+        /// Engaged, dragging, scrolling, zooming or in the palette, for the HUD.
         public var pointerMode: Mode {
+            if palette.isOpen { return .palette }
             if zoom.isZooming { return .zooming }
             if case .dragging = clicks.phase { return .dragging }
             return scroll.isScrolling ? .scrolling : .engaged
@@ -339,6 +352,8 @@ extension Engine {
         case zoom(ZoomDirection)
         /// The "no-no" finger wag: undo the last accidental action.
         case oops
+        /// The command palette opened, changed highlight, fired a slot or closed.
+        case palette(PaletteEvent)
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -357,35 +372,4 @@ extension Engine {
             self.oneShot = oneShot
         }
     }
-}
-
-/// Every timing and threshold the engine uses. Defaults follow docs/spec.md.
-public struct EngineSettings: Sendable, Hashable, Codable {
-    public var pointerHand: Chirality = .right
-    /// Open palm must be held this long to engage.
-    public var armHold = 0.3
-    /// Any finger curled this long aborts arming.
-    public var armAbortDwell = 0.15
-    /// A fist held this long disengages.
-    public var fistDwell = 0.15
-    /// The pointer hand may vanish this long (tracking dropouts) before Engaged ends.
-    public var handLostGrace = 0.2
-    /// `palmFacing` at or above this counts as facing the camera.
-    public var palmFacingMinimum = 0.5
-    public var pointer = PointerSettings()
-    public var click = ClickSettings()
-    public var scroll = ScrollSettings()
-    public var attention = AttentionSettings()
-    public var hardStop = HardStopSettings()
-    public var oneShot = OneShotSettings()
-    public var flick = FlickSettings()
-    public var swipe = SwipeSettings()
-    public var zoom = ZoomSettings()
-    public var oops = OopsSettings()
-    /// The open palm counts as held only below this palm speed, in frame heights per second.
-    public var armMaxSpeed = 0.6
-    /// Camera frame width over height; set from the live camera.
-    public var frameAspect = 16.0 / 9
-
-    public init() {}
 }

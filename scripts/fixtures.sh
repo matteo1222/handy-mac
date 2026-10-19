@@ -114,4 +114,9 @@ fixture gestures/dictation --script "relaxed:400ms shaka:800ms relaxed:400ms" --
 fixture gestures/oops --script "relaxed:300ms point:400ms point:150ms/-25 point:150ms/25 point:150ms/-25 point:150ms/25 point:400ms" --noise 1px --seed 56
 fixture scenarios/twoSwingsAreNotOops --script "relaxed:300ms point:400ms point:150ms/-25 point:150ms/25 point:600ms/25" --noise 1px --seed 57
 
+# Command palette (TASK-21): other hand pinch-holds, then moves toward a slot
+fixture gestures/palette --script "openPalm:2500ms@1.1,0.75~0.12" --other-hand "none:700ms pinch:600ms@0.6,0.8~0.12 pinch:200ms->0.6,0.65 openPalm:400ms" --noise 1px --seed 58
+fixture scenarios/paletteReleaseCancels --script "openPalm:2500ms@1.1,0.75~0.12" --other-hand "none:700ms pinch:800ms@0.6,0.8~0.12 openPalm:400ms" --noise 1px --seed 59
+fixture scenarios/briefOtherHandPinchDoesNotOpenPalette --script "openPalm:2000ms@1.1,0.75~0.12" --other-hand "none:700ms pinch:250ms@0.6,0.8~0.12 openPalm:400ms" --noise 1px --seed 60
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

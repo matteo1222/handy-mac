@@ -15,6 +15,8 @@ public enum ControlRequest: Codable, Sendable, Equatable {
     case simulateCamera(event: String)
     /// Clicks the current problem's one-click fix.
     case applyFix
+    /// Runs a catalog action (a `NamedAction` raw value); with `record` the output is captured, not posted.
+    case perform(action: String, record: Bool)
 }
 
 /// What an injected clip did inside the app.

@@ -41,11 +41,26 @@ extension AppModel {
                 guard let fix = problem?.fix else { throw ControlError("no problem with a fix right now") }
                 apply(fix)
             }
+        case .perform(let name, let record):
+            return perform(named: name, record: record)
         case .inject(let frames, let record, let realtime):
             guard !injecting else { return ControlResponse(ok: false, error: "already injecting", state: snapshot) }
             let result = await inject(frames, record: record, realtime: realtime)
             return ControlResponse(state: snapshot, injected: result)
         }
+    }
+
+    private func perform(named name: String, record: Bool) -> ControlResponse {
+        guard let action = NamedAction(rawValue: name) else {
+            let names = NamedAction.allCases.map(\.rawValue).joined(separator: ", ")
+            return ControlResponse(ok: false, error: "unknown action \(name); use \(names)", state: snapshot)
+        }
+        let liveOutput = output
+        let recorder = RecordingSink()
+        if record { output = OutputDriver(sink: recorder, environment: VirtualPointerEnvironment()) }
+        perform(action)
+        output = liveOutput
+        return ControlResponse(state: snapshot, injected: InjectResult(events: [], actions: recorder.actions))
     }
 
     private func attempt(_ label: String, _ body: () throws -> Void) -> ControlResponse {

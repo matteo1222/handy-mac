@@ -94,7 +94,7 @@ public final class OutputDriver {
             post(.mouseUp(button: button, at: environment.cursor, clickCount: 1))
         case .scroll(let dx, let dy, let phase):
             scroll(dx: dx, dy: dy, phase: phase)
-        case .oneShot, .flick, .swipe, .zoom, .oops:
+        case .oneShot, .flick, .swipe, .zoom, .oops, .palette:
             break  // Gestures become actions through the ActionRouter, then `perform`.
         }
     }
