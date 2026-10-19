@@ -90,11 +90,11 @@ public enum Synthesizer {
         var previousShape: HandShape?
         var position = defaultWrist
         var size = defaultSize
-        for step in track.steps {
+        for (index, step) in track.steps.enumerated() {
             let start = step.start ?? position
             let end = step.end ?? start
             size = step.size ?? size
-            if t < elapsed + step.duration || step == track.steps.last {
+            if t < elapsed + step.duration || index == track.steps.count - 1 {
                 guard let pose = step.pose else { return nil }
                 let local = min(max(t - elapsed, 0), step.duration)
                 let progress = step.duration > 0 ? local / step.duration : 1
@@ -118,8 +118,8 @@ public enum Synthesizer {
         let frameIndex = Int((t * clip.fps).rounded())
         guard frameIndex % max(Int(clip.fps / 5), 1) == 0 else { return nil }
         var elapsed = 0.0
-        for step in clip.face {
-            if t < elapsed + step.duration || step == clip.face.last { return FaceSample(yaw: step.yaw) }
+        for (index, step) in clip.face.enumerated() {
+            if t < elapsed + step.duration || index == clip.face.count - 1 { return FaceSample(yaw: step.yaw) }
             elapsed += step.duration
         }
         return nil

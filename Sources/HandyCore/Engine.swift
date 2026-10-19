@@ -8,12 +8,18 @@ public struct Engine: Sendable {
     public private(set) var state: State
     private var attention: AttentionGate
     private var hardStop: HardStop
+    private var oneShot: OneShotRecognizer
+    private let classifier: PoseClassifier
 
-    public init(mode: Mode = .off, settings: EngineSettings = EngineSettings()) {
+    public init(
+        mode: Mode = .off, settings: EngineSettings = EngineSettings(), classifier: PoseClassifier = .standard
+    ) {
         self.settings = settings
         self.state = mode == .off ? .off : .watching
+        self.classifier = classifier
         attention = AttentionGate(settings: settings.attention)
         hardStop = HardStop(settings: settings.hardStop)
+        oneShot = OneShotRecognizer(settings: settings.oneShot)
     }
 
     public var mode: Mode { state.mode }
@@ -27,7 +33,10 @@ public struct Engine: Sendable {
 
     /// What the HUD shows right now.
     public func status(at t: Double) -> Status {
-        switch state {
+        if case .watching = state, let hold = oneShot.progress(at: t) {
+            return Status(mode: mode, progress: hold.fraction, oneShot: hold.pose)
+        }
+        return switch state {
         case .arming(let arming):
             Status(mode: mode, progress: min(max((t - arming.since) / settings.armHold, 0), 1))
         case .engaged(let engaged):
@@ -67,10 +76,17 @@ public struct Engine: Sendable {
     }
 
     private mutating func watching(_ frame: FrameFeatures) -> [Event] {
-        guard attention.allowsEngaging(at: frame.t), let hand = pointerHand(in: frame), isOpenPalm(hand) else {
+        guard attention.allowsEngaging(at: frame.t) else {
+            oneShot.reset()
             return []
         }
-        return transition(to: .arming(Arming(hand: hand.id, since: frame.t, lastSeen: frame.t)))
+        if let hand = pointerHand(in: frame), isOpenPalm(hand) {
+            oneShot.reset()
+            return transition(to: .arming(Arming(hand: hand.id, since: frame.t, lastSeen: frame.t)))
+        }
+        // One-shots run only while not engaged, so a pointing hand never fires a shortcut.
+        let reading = (pointerHand(in: frame) ?? frame.hands.first).flatMap(classifier.read)
+        return oneShot.update(reading, at: frame.t).map { [.oneShot($0)] } ?? []
     }
 
     private mutating func arming(_ current: Arming, _ frame: FrameFeatures) -> [Event] {
@@ -165,6 +181,8 @@ public struct Engine: Sendable {
 
     private mutating func transition(to next: State) -> [Event] {
         let previous = mode
+        if next != .watching { oneShot.reset() }
+        if next == .watching, [.engaged, .dragging, .scrolling].contains(previous) { oneShot.blockUntilRelease() }
         if next == .off {
             attention = AttentionGate(settings: settings.attention)
             hardStop = HardStop(settings: settings.hardStop)
@@ -251,6 +269,8 @@ extension Engine {
         case dragEnded(button: MouseButton)
         /// Content travel in points (content follows the hand), with trackpad phases.
         case scroll(dx: Double, dy: Double, phase: ScrollPhase)
+        /// A static pose held to completion while not engaged.
+        case oneShot(PoseClass)
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -259,11 +279,14 @@ extension Engine {
         public var progress: Double?
         /// Pinch closeness 0...1 for the cursor ring; nil when not engaged or unknown.
         public var pinch: Double?
+        /// The one-shot pose being held, whose hold `progress` measures.
+        public var oneShot: PoseClass?
 
-        public init(mode: Mode, progress: Double?, pinch: Double? = nil) {
+        public init(mode: Mode, progress: Double?, pinch: Double? = nil, oneShot: PoseClass? = nil) {
             self.mode = mode
             self.progress = progress
             self.pinch = pinch
+            self.oneShot = oneShot
         }
     }
 }
@@ -286,6 +309,7 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var scroll = ScrollSettings()
     public var attention = AttentionSettings()
     public var hardStop = HardStopSettings()
+    public var oneShot = OneShotSettings()
 
     public init() {}
 }

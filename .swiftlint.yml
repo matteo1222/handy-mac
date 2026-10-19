@@ -4,6 +4,7 @@ included:
   - Plugins
 excluded:
   - .build
+  - Sources/HandyCore/PoseClassifierWeights.swift
 
 disabled_rules:
   - todo

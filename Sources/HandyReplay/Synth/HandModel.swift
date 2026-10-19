@@ -14,15 +14,20 @@ public struct HandShape: Sendable, Hashable {
     public var yaw: Double
     /// Degrees in the image plane; positive turns the fingers toward the thumb side.
     public var roll: Double
+    /// How much of a curl happens at the knuckle (MCP) versus the finger joints: 1 is the model's
+    /// default; lower keeps the first phalanx straight and folds the fingertips, as in a loose fist.
+    public var knuckleBend: Double
 
     public init(
-        curl: FingerValues, pinchIndex: Double = 0, pinchMiddle: Double = 0, yaw: Double = 0, roll: Double = 0
+        curl: FingerValues, pinchIndex: Double = 0, pinchMiddle: Double = 0, yaw: Double = 0, roll: Double = 0,
+        knuckleBend: Double = 1
     ) {
         self.curl = curl
         self.pinchIndex = pinchIndex
         self.pinchMiddle = pinchMiddle
         self.yaw = yaw
         self.roll = roll
+        self.knuckleBend = knuckleBend
     }
 
     public func blended(to other: HandShape, _ u: Double) -> HandShape {
@@ -32,7 +37,8 @@ public struct HandShape: Sendable, Hashable {
             pinchIndex: mix(pinchIndex, other.pinchIndex),
             pinchMiddle: mix(pinchMiddle, other.pinchMiddle),
             yaw: mix(yaw, other.yaw),
-            roll: mix(roll, other.roll))
+            roll: mix(roll, other.roll),
+            knuckleBend: mix(knuckleBend, other.knuckleBend))
     }
 }
 
@@ -67,9 +73,9 @@ public enum PoseName: String, Sendable, CaseIterable, Codable {
         case .pinchMiddle: HandShape(curl: curls(0, 0.05, 0.35, 0.05, 0.05), pinchMiddle: 1)
         case .point: HandShape(curl: curls(0.8, 0, 1, 1, 1))
         case .twoFingers: HandShape(curl: curls(0.8, 0, 0, 1, 1))
-        case .thumbsUp: HandShape(curl: curls(0, 1, 1, 1, 1), yaw: 70, roll: -40)
-        case .thumbsDown: HandShape(curl: curls(0, 1, 1, 1, 1), yaw: 70, roll: 140)
-        case .shaka: HandShape(curl: curls(0, 1, 1, 1, 0))
+        case .thumbsUp: HandShape(curl: curls(0.05, 0.85, 0.85, 0.85, 0.85), roll: -90, knuckleBend: 0.6)
+        case .thumbsDown: HandShape(curl: curls(0.05, 0.85, 0.85, 0.85, 0.85), roll: 90, knuckleBend: 0.6)
+        case .shaka: HandShape(curl: curls(0.05, 0.85, 0.85, 0.85, 0.05), roll: -60, knuckleBend: 0.6)
         case .typing: HandShape(curl: curls(0.4, 0.55, 0.6, 0.6, 0.6), yaw: 10, roll: 0)
         case .sideways: HandShape(curl: curls(0, 0, 0, 0, 0), yaw: 80)
         }
@@ -114,7 +120,8 @@ enum HandModel {
         var points = [Vector](repeating: Vector(x: 0, y: 0, z: 0), count: Joint.allCases.count)
         for (finger, spec) in fingers {
             let chain = chain(
-                from: spec.base, direction: spec.direction, segments: spec.segments, curl: shape.curl[finger])
+                from: spec.base, direction: spec.direction, segments: spec.segments, curl: shape.curl[finger],
+                knuckleBend: shape.knuckleBend)
             for (joint, point) in zip(finger.joints, chain) { points[joint.rawValue] = point }
         }
         var thumb = thumbChain(curl: shape.curl.thumb)
@@ -126,7 +133,8 @@ enum HandModel {
     }
 
     private static func chain(
-        from base: Vector, direction: (x: Double, y: Double), segments: [Double], curl: Double
+        from base: Vector, direction: (x: Double, y: Double), segments: [Double], curl: Double,
+        knuckleBend: Double = 1
     ) -> [Vector] {
         let norm = (direction.x * direction.x + direction.y * direction.y).squareRoot()
         let planar = Vector(x: direction.x / norm, y: direction.y / norm, z: 0)
@@ -134,7 +142,8 @@ enum HandModel {
         var angle = 0.0
         var current = base
         for (index, length) in segments.enumerated() {
-            angle += fullCurl[index] * curl * .pi / 180
+            let bend = index == 0 ? knuckleBend : 1 + (1 - knuckleBend) * 0.35
+            angle += fullCurl[index] * curl * bend * .pi / 180
             let step = planar * cos(angle) + Vector(x: 0, y: 0, z: -sin(angle))
             current += step * length
             points.append(current)

@@ -17,6 +17,7 @@ public final class CGEventSink: EventSink {
 
     public func post(_ action: OutputAction) -> Bool {
         guard AccessibilityPermission.isGranted else { return false }
+        if case .keyStroke(let chord) = action { return postKey(chord) }
         let event: CGEvent? =
             if case .scroll(let dx, let dy, let phase, let momentumStart) = action {
                 scrollEvent(dx: dx, dy: dy, phase: phase, momentumStart: momentumStart)
@@ -25,6 +26,23 @@ public final class CGEventSink: EventSink {
             }
         guard let event else { return false }
         event.post(tap: .cghidEventTap)
+        return true
+    }
+
+    private func postKey(_ chord: KeyChord) -> Bool {
+        guard let code = KeyboardLayout.keyCode(for: chord.key) else { return false }
+        var flags = CGEventFlags()
+        if chord.modifiers.contains(.command) { flags.insert(.maskCommand) }
+        if chord.modifiers.contains(.option) { flags.insert(.maskAlternate) }
+        if chord.modifiers.contains(.control) { flags.insert(.maskControl) }
+        if chord.modifiers.contains(.shift) { flags.insert(.maskShift) }
+        for down in [true, false] {
+            guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down) else {
+                return false
+            }
+            event.flags = flags
+            event.post(tap: .cghidEventTap)
+        }
         return true
     }
 
@@ -80,8 +98,8 @@ private struct MouseEventSpec {
             (type, at, self.button, clickCount) = (
                 button == .left ? .leftMouseDragged : .rightMouseDragged, point, button, 0
             )
-        case .scroll:
-            (type, at, button, clickCount) = (.scrollWheel, .zero, .left, 0)
+        case .scroll, .keyStroke:
+            (type, at, button, clickCount) = (.null, .zero, .left, 0)
         }
     }
 }

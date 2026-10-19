@@ -94,6 +94,14 @@ public final class OutputDriver {
             post(.mouseUp(button: button, at: environment.cursor, clickCount: 1))
         case .scroll(let dx, let dy, let phase):
             scroll(dx: dx, dy: dy, phase: phase)
+        case .oneShot:
+            break  // Gestures become actions through the ActionRouter, then `perform`.
+        }
+    }
+
+    public func perform(_ action: Action) {
+        switch action {
+        case .key(let chord): post(.keyStroke(chord))
         }
     }
 

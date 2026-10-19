@@ -16,7 +16,10 @@ struct HUDState: Equatable {
     var progress: Double?
     var tone: Tone
 
-    static func make(status: Engine.Status, lastAction: String?, problem: String?) -> HUDState {
+    /// `binding` names what the pose in progress will do, e.g. "Return".
+    static func make(
+        status: Engine.Status, lastAction: String?, problem: String?, binding: String? = nil
+    ) -> HUDState {
         if let problem {
             return HUDState(
                 symbol: "exclamationmark.triangle.fill", title: problem, detail: nil, progress: nil, tone: .warning)
@@ -26,6 +29,10 @@ struct HUDState: Equatable {
         case .off:
             return HUDState(symbol: "hand.raised.slash", title: "Off", detail: detail, progress: nil, tone: .quiet)
         case .watching:
+            if let pose = status.oneShot, let progress = status.progress {
+                return HUDState(
+                    symbol: pose.symbol, title: pose.title, detail: binding, progress: progress, tone: .active)
+            }
             return HUDState(symbol: "eye", title: "Watching", detail: detail, progress: nil, tone: .quiet)
         case .arming:
             return HUDState(
@@ -38,6 +45,26 @@ struct HUDState: Equatable {
         case .scrolling:
             return HUDState(
                 symbol: "arrow.up.and.down.circle", title: "Scrolling", detail: nil, progress: nil, tone: .active)
+        }
+    }
+}
+
+extension PoseClass {
+    var title: String {
+        switch self {
+        case .none: "No gesture"
+        case .thumbsUp: "Thumbs up"
+        case .thumbsDown: "Thumbs down"
+        case .shaka: "Shaka"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .none: "hand.raised"
+        case .thumbsUp: "hand.thumbsup.fill"
+        case .thumbsDown: "hand.thumbsdown.fill"
+        case .shaka: "hand.wave.fill"
         }
     }
 }

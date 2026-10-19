@@ -20,4 +20,8 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case scroll
     /// Both hands crossed, held 1 s: tracking off.
     case hardStop
+    /// Thumbs up held 500 ms while not engaged: Return.
+    case thumbsUp
+    /// Thumbs down held 500 ms while not engaged: Esc.
+    case thumbsDown
 }

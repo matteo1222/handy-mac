@@ -16,6 +16,7 @@ public final class AppModel {
     @ObservationIgnored private var output = OutputDriver(sink: CGEventSink(), environment: LivePointerEnvironment())
     @ObservationIgnored private var lastFrameTime = 0.0
     @ObservationIgnored private var recentEvents: [TimedEvent] = []
+    @ObservationIgnored private var router = ActionRouter()
     /// Collects every event while a clip is injected; nil otherwise.
     @ObservationIgnored private var injectedEvents: [TimedEvent]?
     private var injecting: Bool { injectedEvents != nil }
@@ -79,6 +80,10 @@ public final class AppModel {
             if case .modeChanged(let mode) = timed.event { changeMode(to: mode) }
             output.handle(timed.event, at: timed.t)
             if let description = timed.event.actionDescription { lastAction = description }
+            for action in router.actions(for: timed.event) {
+                output.perform(action)
+                lastAction = action.description
+            }
         }
         if recentEvents.count > 40 { recentEvents.removeFirst(recentEvents.count - 40) }
     }
@@ -100,7 +105,9 @@ public final class AppModel {
     // MARK: HUD
 
     var currentHUD: HUDState {
-        HUDState.make(status: session.engine.status(at: lastFrameTime), lastAction: lastAction, problem: problem)
+        let status = session.engine.status(at: lastFrameTime)
+        let binding = status.oneShot.flatMap { router.bindings.oneShots[$0] }?.description
+        return HUDState.make(status: status, lastAction: lastAction, problem: problem, binding: binding)
     }
 
     /// The most pressing thing to say plainly in the HUD.
@@ -210,7 +217,7 @@ extension Engine.Event {
         case .click(.right, _): "Right click"
         case .dragBegan: "Drag"
         case .dragEnded: "Drop"
-        case .scroll: nil
+        case .scroll, .oneShot: nil
         }
     }
 }

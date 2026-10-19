@@ -21,6 +21,7 @@ struct HandyCtl: AsyncParsableCommand {
             Features.self,
             BenchPerception.self,
             BenchCursor.self,
+            TrainClassifier.self,
         ]
     )
 }

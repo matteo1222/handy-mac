@@ -71,3 +71,15 @@ private func clip(_ script: String, fps: Double = 30) throws -> Clip {
     let scroll = try features(.twoFingers)
     #expect(scroll.isExtended(.index) && scroll.isExtended(.middle) && !scroll.isExtended(.ring))
 }
+
+@Test func repeatedStepsStillPlayInOrder() throws {
+    let frames = Synthesizer.render(try clip("relaxed:300ms fist:300ms relaxed:300ms", fps: 10))
+    let reaches = frames.map { frame -> Double in
+        var session = Session()
+        _ = session.process(frame)
+        return session.lastFeatures?.hands.first?.reach.index ?? .nan
+    }
+    #expect(reaches[1] > 0.3, "relaxed first")
+    #expect(reaches[5] < 0, "then a fist")
+    #expect(reaches[8] > 0.3, "then relaxed again")
+}

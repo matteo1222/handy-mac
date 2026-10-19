@@ -77,4 +77,11 @@ fixture scenarios/briefCrossDoesNotStop --script "openPalm:600ms@0.6,0.75~0.12 n
 fixture scenarios/handsSideBySideDoNotStop --script "openPalm:2s@1.2,0.75~0.12" --other-hand "openPalm:2s@0.6,0.75~0.12" --noise 1px --seed 31
 fixture scenarios/hardStopWhileDragging --script "openPalm:700ms@0.6,0.75~0.12 pinch:1500ms" --other-hand "none:700ms openPalm:1500ms@1.2,0.75~0.12" --noise 1px --seed 32
 
+# One-shot poses (TASK-12)
+fixture gestures/thumbsUp --script "relaxed:400ms thumbsUp:800ms relaxed:400ms" --noise 1px --seed 33
+fixture gestures/thumbsDown --script "relaxed:400ms thumbsDown:800ms relaxed:400ms" --noise 1px --seed 34
+fixture scenarios/briefThumbsUpDoesNotFire --script "relaxed:400ms thumbsUp:350ms relaxed:400ms" --noise 1px --seed 35
+fixture scenarios/heldThumbsUpFiresOnce --script "relaxed:400ms thumbsUp:2500ms relaxed:400ms" --noise 1px --seed 36
+fixture scenarios/thumbsUpWhileEngagedDoesNothing --script "openPalm:700ms thumbsUp:1000ms" --noise 1px --seed 37
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi
