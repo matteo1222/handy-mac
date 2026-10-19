@@ -61,6 +61,12 @@ public enum PoseName: String, Sendable, CaseIterable, Codable {
     case shaka
     case typing
     case sideways
+    /// Index finger bent down quickly, the others straight: the index-dip click.
+    case indexDip
+    /// Middle finger bent down: the index-dip family's right click.
+    case middleDip
+    /// An engaged hand at rest: fingers loosely bent, palm still toward the camera.
+    case relaxedOpen
 
     public var shape: HandShape {
         func curls(_ thumb: Double, _ index: Double, _ middle: Double, _ ring: Double, _ little: Double)
@@ -82,6 +88,9 @@ public enum PoseName: String, Sendable, CaseIterable, Codable {
         case .shaka: HandShape(curl: curls(0.05, 0.85, 0.85, 0.85, 0.05), roll: -60, knuckleBend: 0.6)
         case .typing: HandShape(curl: curls(0.4, 0.55, 0.6, 0.6, 0.6), yaw: 10, roll: 0)
         case .sideways: HandShape(curl: curls(0, 0, 0, 0, 0), yaw: 80)
+        case .indexDip: HandShape(curl: curls(0, 0.65, 0.05, 0.05, 0.05))
+        case .middleDip: HandShape(curl: curls(0, 0.05, 0.65, 0.05, 0.05))
+        case .relaxedOpen: HandShape(curl: curls(0.15, 0.35, 0.25, 0.25, 0.3))
         }
     }
 }

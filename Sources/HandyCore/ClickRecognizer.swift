@@ -3,7 +3,20 @@ public enum MouseButton: String, Sendable, Codable, CaseIterable {
     case right
 }
 
+/// Which finger motion clicks: the thumb-index pinch (Vision Pro style) or the index dip (Pawvis style).
+public enum ClickGesture: String, Sendable, Hashable, Codable, CaseIterable {
+    case pinch
+    case indexDip
+}
+
 public struct ClickSettings: Sendable, Hashable, Codable {
+    public var gesture = ClickGesture.pinch
+    /// Index-dip mode: the finger's reach (hand scales) below which it presses, and above which it releases.
+    public var dipPress = 0.35
+    public var dipRelease = 0.55
+    /// Fingertips below this confidence never press (matches FeatureExtractor's pinch rule).
+    public var minTipConfidence = 0.5
+
     /// Pinch distance (/ hand scale) below which a pinch presses.
     public var press = 0.25
     /// Pinch distance above which it releases. The gap is the hysteresis band.
@@ -166,5 +179,35 @@ public struct ClickRecognizer: Sendable, Equatable {
     private func isReleased(_ button: MouseButton, pinchIndex: Double?, pinchMiddle: Double?) -> Bool {
         let pinch = button == .left ? pinchIndex : pinchMiddle
         return pinch.map { $0 > settings.release } ?? false
+    }
+}
+
+/// The press signals the click recognizer reads, on the pinch scale (press below `press`, release
+/// above `release`). In index-dip mode a finger's reach is rescaled onto that scale, so one
+/// recognizer serves both gestures.
+public struct ClickSignals: Sendable, Equatable {
+    public var index: Double?
+    public var middle: Double?
+    /// Finger reach for gating pinches; nil in dip mode, where the reach is the signal itself.
+    public var reach: FingerValues?
+
+    public init(_ hand: HandFeatures, settings: ClickSettings) {
+        switch settings.gesture {
+        case .pinch:
+            index = hand.pinchIndex
+            middle = hand.pinchMiddle
+            reach = hand.reach
+        case .indexDip:
+            // Map reach so dipPress lands on press and dipRelease on release. Like a pinch, a dip is never
+            // read from a fingertip the model is unsure of.
+            func rescale(_ finger: Finger) -> Double? {
+                guard hand.jointConfidence[finger.tip.rawValue] >= settings.minTipConfidence else { return nil }
+                let u = (hand.reach[finger] - settings.dipPress) / (settings.dipRelease - settings.dipPress)
+                return settings.press + u * (settings.release - settings.press)
+            }
+            index = rescale(.index)
+            middle = rescale(.middle)
+            reach = nil
+        }
     }
 }

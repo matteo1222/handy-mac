@@ -60,3 +60,16 @@ import Testing
     #expect(events.filter { $0 == .cheatSheet(shown: false) }.count == 1)
     #expect(!events.contains(.modeChanged(to: .arming)), "the other hand never engages")
 }
+
+@Test func indexDipModeClicksOnADipAndIgnoresAPinch() throws {
+    var settings = EngineSettings()
+    settings.click.gesture = .indexDip
+    func clicks(_ script: String) throws -> Int {
+        let stream = Synthesizer.stream(Clip(hands: [try Clip.parseHand(script, chirality: .right)]))
+        return Replayer.run(stream, session: Session(engine: Engine(mode: .watching, settings: settings)))
+            .filter { if case .click = $0.event { return true } else { return false } }.count
+    }
+    #expect(try clicks("openPalm:700ms indexDip:150ms openPalm:400ms") == 1)
+    #expect(try clicks("openPalm:700ms pinch:150ms openPalm:400ms") == 0)
+    #expect(try clicks("openPalm:700ms middleDip:150ms openPalm:400ms") == 1, "middle dip is the right click")
+}

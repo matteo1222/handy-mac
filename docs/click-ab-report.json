@@ -1,0 +1,18 @@
+[
+  {
+    "clickRecall" : 1,
+    "engagedHours" : 0.5,
+    "falseClicksPerHour" : 0,
+    "fidgetHeadroom" : 0.102,
+    "gesture" : "pinch",
+    "occludedRecall" : 0
+  },
+  {
+    "clickRecall" : 1,
+    "engagedHours" : 0.5,
+    "falseClicksPerHour" : 0,
+    "fidgetHeadroom" : 0.059,
+    "gesture" : "indexDip",
+    "occludedRecall" : 1
+  }
+]

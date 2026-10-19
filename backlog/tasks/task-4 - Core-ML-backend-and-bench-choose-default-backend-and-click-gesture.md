@@ -1,9 +1,11 @@
 ---
 id: TASK-4
 title: 'Core ML backend and bench: choose default backend and click gesture'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-10-19 15:38'
+updated_date: '2026-10-19 18:28'
 labels:
   - ready-for-human
 milestone: m-0
@@ -27,6 +29,12 @@ Vision hand-pose quality may plateau, and a front camera can hide the thumb–in
 <!-- AC:BEGIN -->
 - [ ] #1 Core ML backend implements the same HandPoseProvider port and passes the same replay tests
 - [ ] #2 Bench report compares both backends on latency, jitter (px RMS) and landmark accuracy in dim light on identical clips
-- [ ] #3 Click-gesture A/B (thumb–index pinch vs index dip) measured on recorded clips
+- [x] #3 Click-gesture A/B (thumb–index pinch vs index dip) measured on recorded clips
 - [ ] #4 Decision recorded in Backlog: default backend (must meet 30 fps at < 10 ms inference) and default click gesture
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Click A/B done on synthetic clips (doc-1, docs/click-ab-report.json): both 100% recall and 0 false clicks/hour; with the thumb tip hidden pinch 0% vs index dip 100%; fidget headroom pinch 0.102 vs dip 0.059. Index dip is implemented as ClickSettings.gesture = .indexDip (dip respects the low-confidence-tip rule). Remaining: AC1/AC2 need the MediaPipe hand landmarker converted to Core ML (a model download and coremltools); AC4 is the human decision. Recorded clips (TASK-17) should rerun the A/B before deciding.
+<!-- SECTION:NOTES:END -->

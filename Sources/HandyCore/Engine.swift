@@ -173,7 +173,8 @@ public struct Engine: Sendable {
             engaged.fistSince = nil
             events = palette(&engaged, hand, frame) ?? zoom(&engaged, hand, frame) ?? pointer(&engaged, hand, at: t)
         }
-        engaged.closeness = engaged.clicks.closeness(pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle)
+        let signals = ClickSignals(hand, settings: settings.click)
+        engaged.closeness = engaged.clicks.closeness(pinchIndex: signals.index, pinchMiddle: signals.middle)
         let previousMode = current.pointerMode
         state = .engaged(engaged)
         if engaged.pointerMode != previousMode { events.append(.modeChanged(to: mode)) }
@@ -217,10 +218,11 @@ public struct Engine: Sendable {
                 isScrollPose: scrollPose, motion: step.motion, cursorMoved: step.cursor != nil && !scrollPose, at: t)
             if engaged.scroll.ownsMotion { return events }
         }
+        let signals = ClickSignals(hand, settings: settings.click)
         return events
             + engaged.clicks.update(
-                pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle, delta: step.cursor,
-                palm: hand.palmCentroid * settings.pointer.slowGain, at: t, reach: hand.reach)
+                pinchIndex: signals.index, pinchMiddle: signals.middle, delta: step.cursor,
+                palm: hand.palmCentroid * settings.pointer.slowGain, at: t, reach: signals.reach)
     }
 
     /// Clearly index and middle up, ring and little curled. The margins keep a relaxed hand, whose
