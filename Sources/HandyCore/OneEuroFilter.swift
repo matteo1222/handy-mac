@@ -17,9 +17,9 @@ public struct OneEuroSettings: Sendable, Hashable, Codable {
     public static let joints = OneEuroSettings(minCutoff: 1.5, beta: 8)
 }
 
-public struct OneEuroFilter: Sendable {
+public struct OneEuroFilter: Sendable, Equatable {
     public var settings: OneEuroSettings
-    private struct Sample: Sendable {
+    private struct Sample: Sendable, Equatable {
         var t: Double
         var value: Double
         var derivative: Double
@@ -61,7 +61,7 @@ public struct OneEuroFilter: Sendable {
 }
 
 /// A 1€ filter per axis of a 2D point.
-public struct PointFilter: Sendable {
+public struct PointFilter: Sendable, Equatable {
     private var x: OneEuroFilter
     private var y: OneEuroFilter
 

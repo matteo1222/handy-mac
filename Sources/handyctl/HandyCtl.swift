@@ -14,11 +14,13 @@ struct HandyCtl: AsyncParsableCommand {
             Record.self,
             Screenshot.self,
             Windows.self,
+            Inject.self,
             // Headless engine
             Synth.self,
             Replay.self,
             Features.self,
             BenchPerception.self,
+            BenchCursor.self,
         ]
     )
 }

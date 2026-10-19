@@ -41,4 +41,9 @@ fixture scenarios/restingHandNeverEngages --script "relaxed:3s typing:3s relaxed
 fixture scenarios/sidewaysPalmNeverEngages --script "sideways:2s" --noise 1.5px --seed 7
 fixture scenarios/dropoutWhileEngaged --script "openPalm:2s" --noise 1.5px --dropout 0.1 --seed 8
 
+# Cursor (TASK-6)
+fixture gestures/moveCursor --script "openPalm:600ms@0.7,0.7 openPalm:600ms->1.1,0.6 openPalm:300ms" --noise 1px --seed 9
+fixture scenarios/stillHandStillCursor --script "openPalm:3s" --noise 2px --seed 10
+fixture scenarios/fistDoesNotDragCursor --script "openPalm:600ms fist:400ms" --noise 1px --seed 11
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

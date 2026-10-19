@@ -8,17 +8,33 @@ public enum ControlRequest: Codable, Sendable, Equatable {
     case record(Bool)
     /// Renders one of Handy's own views (`hud`, `hud-gallery`, ...) to a PNG at `path`.
     case screenshot(target: String, path: String)
+    /// Runs frames through the app's session instead of the camera. With `record`, output actions
+    /// are captured and returned instead of posted. With `realtime`, frames are paced by their timestamps.
+    case inject(frames: [LandmarkFrame], record: Bool, realtime: Bool)
+}
+
+/// What an injected clip did inside the app.
+public struct InjectResult: Codable, Sendable, Equatable {
+    public var events: [TimedEvent]
+    public var actions: [OutputAction]
+
+    public init(events: [TimedEvent], actions: [OutputAction]) {
+        self.events = events
+        self.actions = actions
+    }
 }
 
 public struct ControlResponse: Codable, Sendable, Equatable {
     public var ok: Bool
     public var error: String?
     public var state: AppStateSnapshot?
+    public var injected: InjectResult?
 
-    public init(ok: Bool = true, error: String? = nil, state: AppStateSnapshot? = nil) {
+    public init(ok: Bool = true, error: String? = nil, state: AppStateSnapshot? = nil, injected: InjectResult? = nil) {
         self.ok = ok
         self.error = error
         self.state = state
+        self.injected = injected
     }
 }
 
@@ -32,18 +48,42 @@ public struct AppStateSnapshot: Codable, Sendable, Equatable {
     public var recording: String?
     public var perception: PerceptionStats?
     public var hud: HUDSnapshot?
+    public var accessibilityGranted: Bool?
+    /// OS actions posted and refused since launch.
+    public var output: OutputStats?
+    /// The most recent engine events, oldest first.
+    public var lastEvents: [TimedEvent]
+    public var settings: EngineSettings?
 
     public init(
         mode: Engine.Mode, version: String = BuildInfo.version, stopHotKey: String? = nil, camera: String = "off",
-        recording: String? = nil, perception: PerceptionStats? = nil, hud: HUDSnapshot? = nil
+        recording: String? = nil, perception: PerceptionStats? = nil, hud: HUDSnapshot? = nil,
+        accessibilityGranted: Bool? = nil, output: OutputStats? = nil, lastEvents: [TimedEvent] = [],
+        settings: EngineSettings? = nil
     ) {
+        self.output = output
         self.hud = hud
+        self.accessibilityGranted = accessibilityGranted
+        self.lastEvents = lastEvents
+        self.settings = settings
         self.mode = mode
         self.version = version
         self.stopHotKey = stopHotKey
         self.camera = camera
         self.recording = recording
         self.perception = perception
+    }
+}
+
+public struct OutputStats: Codable, Sendable, Equatable {
+    public var posted: Int
+    public var refused: Int
+    public var blocked: Bool
+
+    public init(posted: Int, refused: Int, blocked: Bool) {
+        self.posted = posted
+        self.refused = refused
+        self.blocked = blocked
     }
 }
 

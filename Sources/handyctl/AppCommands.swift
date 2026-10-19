@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import HandyControl
 import HandyCore
+import HandyReplay
 
 struct State: ParsableCommand {
     static let configuration = CommandConfiguration(abstract: "Print the running app's engine and HUD state.")
@@ -76,5 +77,33 @@ struct Screenshot: ParsableCommand {
     func run() throws {
         let path = URL(filePath: output).standardizedFileURL.path(percentEncoded: false)
         try reply(to: .screenshot(target: target, path: path), socket: socket)
+    }
+}
+
+struct Inject: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Feed a .lmk clip into the running app in place of the camera.",
+        discussion: "With --sink record, OS input is captured and printed instead of posted.")
+
+    enum Sink: String, ExpressibleByArgument {
+        case record
+        case live
+    }
+
+    @Argument(help: "The .lmk clip.")
+    var clip: String
+
+    @Option(help: "record (capture, do not post) or live (post real input).")
+    var sink: Sink = .record
+
+    @Flag(help: "Pace frames by their timestamps so the HUD animates.")
+    var realtime = false
+
+    @Option(help: "Control socket path.")
+    var socket = ControlSocket.defaultPath
+
+    func run() async throws {
+        let stream = try LandmarkStream(contentsOf: URL(filePath: clip))
+        try reply(to: .inject(frames: stream.frames, record: sink == .record, realtime: realtime), socket: socket)
     }
 }

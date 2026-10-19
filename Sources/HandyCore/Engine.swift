@@ -68,7 +68,9 @@ public struct Engine: Sendable {
             arming.notOpenSince = since
         }
         if arming.notOpenSince == nil, t - arming.since >= settings.armHold {
-            return transition(to: .engaged(Engaged(hand: hand.id, lastSeen: t)))
+            var pointer = PointerTracker(settings: settings.pointer)
+            pointer.reanchor(at: hand.palmCentroid, t: t)
+            return transition(to: .engaged(Engaged(hand: hand.id, lastSeen: t, pointer: pointer)))
         }
         state = .arming(arming)
         return []
@@ -81,15 +83,21 @@ public struct Engine: Sendable {
             return t - engaged.lastSeen >= settings.handLostGrace ? transition(to: .watching) : []
         }
         engaged.lastSeen = t
+        var events: [Event] = []
         if isFist(hand) {
             let since = engaged.fistSince ?? t
             if t - since >= settings.fistDwell { return transition(to: .watching) }
             engaged.fistSince = since
+            // Closing into a fist must not drag the cursor; hold it while the fist forms.
+            engaged.pointer.reanchor(at: hand.palmCentroid, t: t)
         } else {
             engaged.fistSince = nil
+            if let delta = engaged.pointer.delta(for: hand.palmCentroid, at: t) {
+                events.append(.moveCursor(dx: delta.x, dy: delta.y))
+            }
         }
         state = .engaged(engaged)
-        return []
+        return events
     }
 
     private func pointerHand(in frame: FrameFeatures) -> HandFeatures? {
@@ -151,6 +159,7 @@ extension Engine {
         public var hand: Int
         public var lastSeen: Double
         public var fistSince: Double?
+        public var pointer: PointerTracker
     }
 
     /// User-level commands from the menu bar, the hotkey or handyctl.
@@ -167,6 +176,8 @@ extension Engine {
 
     public enum Event: Sendable, Equatable, Codable {
         case modeChanged(to: Mode)
+        /// Relative cursor motion in points.
+        case moveCursor(dx: Double, dy: Double)
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -194,6 +205,7 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var handLostGrace = 0.2
     /// `palmFacing` at or above this counts as facing the camera.
     public var palmFacingMinimum = 0.5
+    public var pointer = PointerSettings()
 
     public init() {}
 }

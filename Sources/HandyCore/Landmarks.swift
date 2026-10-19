@@ -16,6 +16,7 @@ public struct Point: Sendable, Hashable, Codable {
     public static func - (a: Point, b: Point) -> Point { Point(x: a.x - b.x, y: a.y - b.y) }
     public static func * (a: Point, k: Double) -> Point { Point(x: a.x * k, y: a.y * k) }
     public static func / (a: Point, k: Double) -> Point { Point(x: a.x / k, y: a.y / k) }
+    public static func += (a: inout Point, b: Point) { a = a + b }
 
     public var length: Double { (x * x + y * y).squareRoot() }
 

@@ -6,4 +6,6 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case engage
     /// A fist while engaged.
     case disengage
+    /// Moving the open hand while engaged.
+    case moveCursor
 }
