@@ -11,3 +11,5 @@ What a user can do with Handy, and how to prove each with the running app. One f
 | Safety: attention gate and hard stop | [safety.md](safety.md) | `inject gestures/hardStop.lmk`: last event `modeChanged off` |
 | Camera problems | [camera-problems.md](camera-problems.md) | `camera inUse`: HUD "Camera in use by another app" with fix "Retry" |
 | Onboarding | [onboarding.md](onboarding.md) | `screenshot onboarding`: every step renders |
+| Spaces, zoom and palette | [spaces-zoom-palette.md](spaces-zoom-palette.md) | `inject gestures/palette.lmk`: one `keyStroke` ⌘T |
+| Settings, dictation, cheat sheet | [settings-and-help.md](settings-and-help.md) | `inject gestures/dictation.lmk`: the user's Dictation shortcut |
