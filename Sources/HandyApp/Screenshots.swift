@@ -31,6 +31,7 @@ enum Screenshots {
             "onboarding": { AnyView(OnboardingContactSheet()) },
             "palette": { AnyView(PaletteView(layout: model.settings.palette.standard, highlighted: 2)) },
             "settings": { AnyView(SettingsView(model: model)) },
+            "pointing-test": { AnyView(PointingTestView(model: PointingTestModel())) },
             "corpus-recorder": {
                 AnyView(CorpusRecorderView(model: CorpusRecorderModel(begin: {}, end: {})))
             },

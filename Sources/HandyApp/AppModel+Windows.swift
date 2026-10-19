@@ -81,4 +81,15 @@ extension AppModel {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// Opens the ISO 9241-411 pointing test (TASK-28).
+    func showPointingTest() {
+        let window = NSWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Pointing Test"
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(rootView: PointingTestView(model: PointingTestModel()))
+        window.center()
+        pointingWindow = window
+        NSApplication.shared.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
 }

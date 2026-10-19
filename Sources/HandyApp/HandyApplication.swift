@@ -88,6 +88,7 @@ struct MenuBarContent: View {
         }
         .disabled(model.oopsCount == 0)
         Button("Record Corpus Session…") { model.showCorpusRecorder() }
+        Button("Pointing Test…") { model.showPointingTest() }
         Button(model.tracking.recordingURL == nil ? "Start Recording Landmarks" : "Stop Recording Landmarks") {
             try? model.tracking.setRecording(model.tracking.recordingURL == nil)
         }

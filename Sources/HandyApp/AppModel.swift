@@ -46,6 +46,7 @@ public final class AppModel {
     var onboarding: OnboardingModel?
     var corpusRecorder: CorpusRecorderModel?
     @ObservationIgnored var corpusWindow: NSWindow?
+    @ObservationIgnored var pointingWindow: NSWindow?
     @ObservationIgnored var outputBeforeCorpus: OutputDriver?
     @ObservationIgnored var onboardingWindow: NSWindow?
     static let log = Logger(subsystem: "dev.handy", category: "app")
