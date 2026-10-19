@@ -1,0 +1,64 @@
+included:
+  - Sources
+  - Tests
+  - Plugins
+excluded:
+  - .build
+
+disabled_rules:
+  - todo
+  - trailing_comma
+  - opening_brace
+  - identifier_name
+  - type_name
+  - nesting
+  - closure_parameter_position
+
+opt_in_rules:
+  - force_unwrapping
+  - no_extension_access_modifier
+
+line_length:
+  warning: 120
+  error: 160
+
+force_try: error
+force_cast: error
+force_unwrapping: error
+
+custom_rules:
+  no_print:
+    name: "No print"
+    regex: '^\s*print\('
+    excluded: "Sources/(handyctl|FenceCheck)/.*"
+    message: "Use os.Logger; only CLIs print"
+    severity: error
+  no_unchecked_sendable:
+    name: "No @unchecked Sendable"
+    regex: '@unchecked\s+Sendable'
+    message: "Prove Sendable with types or isolation, or list the exception in DEBT.md"
+    severity: error
+  core_no_wall_clock:
+    name: "HandyCore reads no clock"
+    regex: '\b(Date\(\)|Date\.now|CFAbsoluteTimeGetCurrent|ContinuousClock|SuspendingClock|mach_absolute_time)'
+    included: "Sources/HandyCore/.*"
+    message: "HandyCore takes time only from frame timestamps"
+    severity: error
+  core_no_dispatch:
+    name: "HandyCore uses no DispatchQueue"
+    regex: '\bDispatchQueue\b'
+    included: "Sources/HandyCore/.*"
+    message: "HandyCore is synchronous and deterministic"
+    severity: error
+  core_no_task_sleep:
+    name: "HandyCore never sleeps"
+    regex: '\bTask\.sleep\b'
+    included: "Sources/HandyCore/.*"
+    message: "HandyCore takes time only from frame timestamps"
+    severity: error
+  core_no_cgevent:
+    name: "CGEvent only in HandyOutput"
+    regex: '\bCGEvent\b'
+    included: "Sources/(?!HandyOutput/).*"
+    message: "Only HandyOutput touches the OS input stream"
+    severity: error

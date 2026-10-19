@@ -23,4 +23,13 @@ Camera hand-gesture control for macOS: drive the trackpad and keyboard with your
 
 ## Status
 
-Planning. Decided to build greenfield (no Pawvis fork). Next step: scaffold the Swift packages, the fence and `handyctl` (see [spec](docs/spec.md)).
+Walking skeleton. SwiftPM only (no Xcode project).
+
+```bash
+make verify            # format, lint, debt ledger, build, tests, fence proof, app bundle
+scripts/run-app.sh     # package and launch the menu-bar app
+.build/debug/handyctl doctor
+.build/debug/handyctl state
+```
+
+Stop Handy from anywhere with ⌃⌥⌘H. Every lint suppression is listed in [DEBT.md](DEBT.md).

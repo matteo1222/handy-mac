@@ -1,0 +1,5 @@
+pre-commit:
+  commands:
+    verify-fast:
+      glob: "*.{swift,yml,py,md}"
+      run: make verify-fast

@@ -4,6 +4,7 @@ title: Relative cursor movement from palm centroid
 status: To Do
 assignee: []
 created_date: '2026-10-19 15:38'
+updated_date: '2026-10-19 16:06'
 labels:
   - ready-for-agent
 milestone: m-1
@@ -28,7 +29,7 @@ Moving the pointer is the core trackpad action. The palm centroid is far steadie
 - [ ] #1 While Engaged, cursor delta = filtered palm delta × a trackpad-like acceleration curve
 - [ ] #2 Within 24 px of a screen edge the cursor sticks for 150 ms
 - [ ] #3 CGEvent posting lives only in HandyOutput; Accessibility permission is checked and a missing permission is reported, not crashed on
-- [ ] #4 handyctl inject feeds a clip into the running app over local XPC instead of the camera; --sink record captures CGEvents without posting them
+- [ ] #4 handyctl inject feeds a clip into the running app over the local control socket instead of the camera; --sink record captures CGEvents without posting them
 - [ ] #5 handyctl state reports engine state, HUD state, last events and filter parameters
 - [ ] #6 Cursor jitter while the hand is still is measured and reported
 <!-- AC:END -->

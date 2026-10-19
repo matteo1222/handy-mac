@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "lineLength": 120,
+  "indentation": { "spaces": 4 },
+  "maximumBlankLines": 1,
+  "respectsExistingLineBreaks": true,
+  "lineBreakBeforeEachArgument": false,
+  "rules": {
+    "AlwaysUseLowerCamelCase": false,
+    "UseLetInEveryBoundCaseVariable": false,
+    "OrderedImports": true,
+    "NoAccessLevelOnExtensionDeclaration": false,
+    "ValidateDocumentationComments": false,
+    "AllPublicDeclarationsHaveDocumentation": false,
+    "UseTripleSlashForDocumentationComments": true,
+    "NeverForceUnwrap": false,
+    "NeverUseForceTry": false
+  }
+}
