@@ -6,3 +6,4 @@ no longer matches a suppression.
 
 | File | Rule | Reason |
 | --- | --- | --- |
+| Sources/HandyPerception/CameraCapture.swift | nonisolated_unsafe | CMSampleBuffer is not Sendable; the AVFoundation callback runs on the worker actor's own serial queue and the buffer is used synchronously inside it |

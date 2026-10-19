@@ -1,9 +1,11 @@
 ---
 id: TASK-3
 title: 'Live perception with Vision: capture to filtered hand features'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-10-19 15:38'
+updated_date: '2026-10-19 16:20'
 labels:
   - ready-for-agent
 milestone: m-0
@@ -32,3 +34,19 @@ The engine needs real, steady hand features from the built-in camera. This slice
 - [ ] #5 Live sessions can be recorded to the landmark format and replayed with identical features
 - [ ] #6 Pose + filter + features stay within budget on M1 (inference ≤ 10 ms, filter+features ≤ 1 ms) as measured by a bench
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. HandyPerception: HandPoseProvider/FaceProvider ports, Vision backends, ImageGeometry (frame-height units, frames mirrored at capture so chirality needs no flip).
+2. CameraCapture: AVCaptureSession 720p, 60 fps when offered, late frames dropped, mirrored connection; PerceptionWorker actor whose executor is the capture queue; FrameThrottle (pure, core) drops to 10 fps after 5 s without a hand, face at 5 fps.
+3. Quality gate / identity / 1€ / features already in HandyCore (TASK-2).
+4. App: LiveTracking runs camera while not Off, frames into the shared Session; debug overlay window; landmark recording (menu + handyctl record); live perception stats in handyctl state.
+5. Proof: Vision tests on rendered emoji hands; handyctl bench-perception; recorded-session replay test; live check with the real camera.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Vision finds all 21 joints on rendered ✋/👍/🤏/🤙 emoji, which gives camera-free backend tests and a bench. bench-perception (release, Apple M3): inference p50 6.0 / p95 8.0 ms, filter+features p95 0.006 ms for two hands. Not yet measured on M1. Recording round-trip test proves identical features.
+<!-- SECTION:NOTES:END -->

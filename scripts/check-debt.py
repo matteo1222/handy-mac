@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Fails when a lint suppression is missing from DEBT.md, or DEBT.md lists one that no longer exists.
+"""Fails when a suppression is missing from DEBT.md, or DEBT.md lists one that no longer exists.
 
-A suppression is any `swiftlint:disable` comment. Each must have a DEBT.md table row
-`| path | rule | reason |` with a non-empty reason.
+A suppression is any `swiftlint:disable` comment or a `nonisolated(unsafe)` concurrency escape
+(rule name `nonisolated_unsafe`). Each must have a DEBT.md table row `| path | rule | reason |`
+with a non-empty reason.
 """
 import pathlib
 import re
@@ -18,6 +19,8 @@ def suppressions():
     for folder in ("Sources", "Tests", "Plugins"):
         for path in sorted((ROOT / folder).rglob("*.swift")):
             for line in path.read_text(encoding="utf-8").splitlines():
+                if "nonisolated(unsafe)" in line and not line.lstrip().startswith("//"):
+                    found.add((str(path.relative_to(ROOT)), "nonisolated_unsafe"))
                 match = SUPPRESSION.search(line)
                 if match:
                     for rule in match.group(1).split():

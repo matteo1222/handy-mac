@@ -7,7 +7,7 @@ import Testing
     let server = try ControlServer(path: path) { request in
         switch request {
         case .state: ControlResponse(state: AppStateSnapshot(mode: .watching, version: "test"))
-        case .command: ControlResponse(ok: false, error: "unexpected")
+        case .command, .record: ControlResponse(ok: false, error: "unexpected")
         }
     }
     let reply = try await Task.detached { try ControlClient.send(.state, path: path) }.value

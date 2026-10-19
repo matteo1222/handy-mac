@@ -42,3 +42,19 @@ func reply(to request: ControlRequest, socket: String) throws {
     try printJSON(response)
     if !response.ok { throw ExitCode.failure }
 }
+
+struct Record: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Start or stop recording the running app's live landmarks to a .lmk file.")
+
+    @Argument(help: "start or stop")
+    var action: String
+
+    @Option(help: "Control socket path.")
+    var socket = ControlSocket.defaultPath
+
+    func run() throws {
+        guard ["start", "stop"].contains(action) else { throw ValidationError("use start or stop") }
+        try reply(to: .record(action == "start"), socket: socket)
+    }
+}
