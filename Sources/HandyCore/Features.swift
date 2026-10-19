@@ -93,7 +93,7 @@ public struct FeatureExtractor: Sendable {
 
     public mutating func features(for tracks: [HandTracker.Track], at t: Double) -> [HandFeatures] {
         let result = tracks.compactMap { features(for: $0, at: t) }
-        lastCentroid = lastCentroid.filter { id, _ in result.contains { $0.id == id } }
+        lastCentroid = lastCentroid.filter { _, last in t - last.t < 0.5 }
         return result
     }
 

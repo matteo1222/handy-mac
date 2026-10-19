@@ -18,8 +18,9 @@ opt_in_rules:
   - force_unwrapping
   - no_extension_access_modifier
 
+# swift-format owns wrapping at 120; this only catches lines it cannot wrap.
 line_length:
-  warning: 120
+  warning: 130
   error: 160
 
 force_try: error

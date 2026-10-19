@@ -2,13 +2,15 @@
 ///
 /// Quality gate: joints under `minJointConfidence` are dropped and hands with fewer than
 /// `minValidJoints` are rejected. Identity: each hand matches the nearest previous wrist.
-/// A hand that is not matched loses its track, and its filters start fresh next time.
+/// A hand missing for longer than `trackGrace` loses its track, and its filters start fresh.
 public struct HandTracker: Sendable {
     public struct Settings: Sendable, Hashable, Codable {
         public var minJointConfidence = 0.3
         public var minValidJoints = 15
         /// Normalised image units; a wrist that jumps further than this is a new hand.
         public var maxWristJump = 0.25
+        /// A hand missing for less than this keeps its identity and filters (tracking dropouts).
+        public var trackGrace = 0.25
         public var filter = OneEuroSettings.joints
 
         public init() {}
@@ -28,6 +30,7 @@ public struct HandTracker: Sendable {
         let id: Int
         var chirality: Chirality
         var wrist: Point
+        var lastSeen: Double
         var filters: [PointFilter]
     }
 
@@ -56,7 +59,7 @@ public struct HandTracker: Sendable {
                 state.chirality = hand.chirality
             } else {
                 state = State(
-                    id: nextID, chirality: hand.chirality, wrist: wrist,
+                    id: nextID, chirality: hand.chirality, wrist: wrist, lastSeen: t,
                     filters: Array(repeating: PointFilter(settings: settings.filter), count: Joint.allCases.count))
                 nextID += 1
             }
@@ -69,13 +72,14 @@ public struct HandTracker: Sendable {
                 filtered.append(state.filters[joint.rawValue].filter(sample.point, at: t))
             }
             state.wrist = filtered[Joint.wrist.rawValue] ?? wrist
+            state.lastSeen = t
             next.append(state)
             output.append(
                 Track(
                     id: state.id, chirality: state.chirality, joints: filtered,
                     confidence: hand.joints.map { $0?.confidence ?? 0 }))
         }
-        tracks = next
+        tracks = next + unclaimed.filter { t - $0.lastSeen < settings.trackGrace }
         return output
     }
 

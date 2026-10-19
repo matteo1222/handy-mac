@@ -15,8 +15,8 @@ import Testing
 }
 
 @Test func diffReportsMissingExtraAndChangedEvents() {
-    let watching = TimedEvent(t: 0, event: .modeChanged(.watching))
-    let off = TimedEvent(t: 1, event: .modeChanged(.off))
+    let watching = TimedEvent(t: 0, event: .modeChanged(to: .watching))
+    let off = TimedEvent(t: 1, event: .modeChanged(to: .off))
     #expect(Replayer.diff(expected: [watching, off], actual: [watching, off]).isEmpty)
     #expect(
         Replayer.diff(expected: [watching], actual: [watching, off]) == [
@@ -28,9 +28,9 @@ import Testing
 }
 
 @Test func diffToleratesFloatingPointNoiseOnly() {
-    let a = TimedEvent(t: 0.1, event: .modeChanged(.off))
-    #expect(Replayer.diff(expected: [a], actual: [TimedEvent(t: 0.1 + 1e-9, event: .modeChanged(.off))]).isEmpty)
-    #expect(Replayer.diff(expected: [a], actual: [TimedEvent(t: 0.2, event: .modeChanged(.off))]).count == 1)
+    let a = TimedEvent(t: 0.1, event: .modeChanged(to: .off))
+    #expect(Replayer.diff(expected: [a], actual: [TimedEvent(t: 0.1 + 1e-9, event: .modeChanged(to: .off))]).isEmpty)
+    #expect(Replayer.diff(expected: [a], actual: [TimedEvent(t: 0.2, event: .modeChanged(to: .off))]).count == 1)
 }
 
 /// Every gesture needs `Fixtures/gestures/<name>.lmk` and `<name>.events.json`, and the replay must match.
@@ -62,4 +62,18 @@ private enum ProbeGesture: CaseIterable { case uncovered }
 
 @Test func coverageCheckFailsForAGestureWithoutAFixture() throws {
     #expect(try fixtureProblems(for: ProbeGesture.self) == ["missing replay fixture Fixtures/gestures/uncovered.lmk"])
+}
+
+/// Negative and edge-case clips must replay to exactly their expected events too.
+@Test func everyScenarioFixtureReplaysAsExpected() throws {
+    let folder = try fixture("scenarios")
+    let clips = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        .filter { $0.pathExtension == "lmk" }
+    #expect(!clips.isEmpty)
+    for clip in clips {
+        let expected = clip.deletingPathExtension().appendingPathExtension("events.json")
+        let actual = Replayer.run(try LandmarkStream(contentsOf: clip))
+        let diff = Replayer.diff(expected: try Replayer.decode(Data(contentsOf: expected)), actual: actual)
+        #expect(diff.isEmpty, "\(clip.lastPathComponent) differs: \(diff)")
+    }
 }

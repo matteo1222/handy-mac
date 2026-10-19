@@ -64,13 +64,16 @@ extension Engine.Mode {
         switch self {
         case .off: "Off"
         case .watching: "Watching"
+        case .arming: "Arming"
+        case .engaged: "Engaged"
         }
     }
 
     var menuBarSymbol: String {
         switch self {
         case .off: "hand.raised.slash"
-        case .watching: "hand.raised"
+        case .watching, .arming: "hand.raised"
+        case .engaged: "hand.raised.fill"
         }
     }
 }

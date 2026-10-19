@@ -1,9 +1,9 @@
 # make verify is the single entry point for humans, agents and CI.
 SOURCES := Sources Tests Plugins Package.swift
 
-.PHONY: verify verify-fast format format-check lint debt build test fence app
+.PHONY: verify verify-fast format format-check lint debt build test fence app fixtures
 
-verify: format-check lint debt build test fence app
+verify: format-check lint debt build test fixtures fence app
 
 # Pre-commit subset: no app packaging, no fence proof.
 verify-fast: format-check lint debt test
@@ -25,6 +25,9 @@ build:
 
 test:
 	swift test --quiet
+
+fixtures:
+	scripts/fixtures.sh check
 
 fence:
 	scripts/prove-fence.sh

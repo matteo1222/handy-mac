@@ -43,6 +43,7 @@ final class LiveTracking {
 
     @ObservationIgnored private var capture: CameraCapture?
     @ObservationIgnored private var frameTask: Task<Void, Never>?
+    @ObservationIgnored private var permissionTask: Task<Void, Never>?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
     @ObservationIgnored private var recorder: LandmarkStreamWriter?
     @ObservationIgnored private var recordingOrigin: Double?
@@ -59,7 +60,28 @@ final class LiveTracking {
     }
 
     func start(deviceID: String? = nil) {
-        guard capture == nil else { return }
+        guard capture == nil, permissionTask == nil else { return }
+        switch CameraPermission.current {
+        case .granted:
+            startCapture(deviceID: deviceID)
+        case .notDetermined:
+            camera = .starting
+            permissionTask = Task { [weak self] in
+                let granted = await CameraPermission.request() == .granted
+                guard let self, self.permissionTask != nil else { return }
+                self.permissionTask = nil
+                if granted {
+                    self.startCapture(deviceID: deviceID)
+                } else {
+                    self.camera = .failed("camera permission denied")
+                }
+            }
+        case .denied, .restricted:
+            camera = .failed("camera permission denied")
+        }
+    }
+
+    private func startCapture(deviceID: String?) {
         let capture = CameraCapture()
         self.capture = capture
         camera = .starting
@@ -73,6 +95,8 @@ final class LiveTracking {
     }
 
     func stop() {
+        permissionTask?.cancel()
+        permissionTask = nil
         capture?.stop()
         capture = nil
         frameTask?.cancel()
@@ -101,6 +125,17 @@ final class LiveTracking {
         frameCount += 1
         last = frame
         record(frame.landmarks)
+    }
+
+    /// A camera problem to say plainly in the HUD, or nil.
+    var problem: String? {
+        switch camera {
+        case .paused(.inUseByAnotherApp): "Camera in use by another app"
+        case .paused(.disconnected): "Camera disconnected"
+        case .paused(.unavailable): "No camera available"
+        case .failed(let message): message.prefix(1).uppercased() + message.dropFirst()
+        case .off, .starting, .live: nil
+        }
     }
 
     func publishDebug(_ features: FrameFeatures?, for landmarks: LandmarkFrame) {

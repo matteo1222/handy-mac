@@ -3,8 +3,8 @@ import Testing
 
 @Test func toggleSwitchesBetweenOffAndWatching() {
     var engine = Engine()
-    #expect(engine.handle(.command(.toggle)) == [.modeChanged(.watching)])
-    #expect(engine.handle(.command(.toggle)) == [.modeChanged(.off)])
+    #expect(engine.handle(.command(.toggle)) == [.modeChanged(to: .watching)])
+    #expect(engine.handle(.command(.toggle)) == [.modeChanged(to: .off)])
 }
 
 @Test func stopReturnsToOffFromEveryMode() {

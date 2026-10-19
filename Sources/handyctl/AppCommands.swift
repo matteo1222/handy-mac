@@ -1,4 +1,5 @@
 import ArgumentParser
+import Foundation
 import HandyControl
 import HandyCore
 
@@ -56,5 +57,24 @@ struct Record: ParsableCommand {
     func run() throws {
         guard ["start", "stop"].contains(action) else { throw ValidationError("use start or stop") }
         try reply(to: .record(action == "start"), socket: socket)
+    }
+}
+
+struct Screenshot: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Render one of Handy's own views to a PNG (hud, hud-gallery).")
+
+    @Argument(help: "What to render.")
+    var target: String
+
+    @Argument(help: "Output .png path.")
+    var output: String
+
+    @Option(help: "Control socket path.")
+    var socket = ControlSocket.defaultPath
+
+    func run() throws {
+        let path = URL(filePath: output).standardizedFileURL.path(percentEncoded: false)
+        try reply(to: .screenshot(target: target, path: path), socket: socket)
     }
 }

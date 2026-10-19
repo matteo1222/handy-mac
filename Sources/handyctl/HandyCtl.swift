@@ -6,8 +6,19 @@ struct HandyCtl: AsyncParsableCommand {
         commandName: "handyctl",
         abstract: "Drive and prove Handy without a camera. Every command prints JSON.",
         subcommands: [
-            Doctor.self, State.self, Send.self, Synth.self, Replay.self, Features.self, BenchPerception.self,
+            // Environment
+            Doctor.self,
+            // The running app
+            State.self,
+            Send.self,
             Record.self,
+            Screenshot.self,
+            Windows.self,
+            // Headless engine
+            Synth.self,
+            Replay.self,
+            Features.self,
+            BenchPerception.self,
         ]
     )
 }
