@@ -31,6 +31,9 @@ enum Screenshots {
             "onboarding": { AnyView(OnboardingContactSheet()) },
             "palette": { AnyView(PaletteView(layout: model.settings.palette.standard, highlighted: 2)) },
             "settings": { AnyView(SettingsView(model: model)) },
+            "corpus-recorder": {
+                AnyView(CorpusRecorderView(model: CorpusRecorderModel(begin: {}, end: {})))
+            },
             "cheat-sheet": { AnyView(CheatSheetView(entries: model.guideEntries, appName: "Safari")) },
             "cursor-ring": {
                 AnyView(
@@ -47,6 +50,7 @@ enum Screenshots {
 
     nonisolated static let targets = [
         "hud", "hud-gallery", "cursor-ring", "settings", "onboarding", "onboarding:<step>", "palette", "cheat-sheet",
+        "corpus-recorder",
     ]
 
     static func render(_ target: String, model: AppModel, to url: URL) throws {

@@ -78,7 +78,7 @@ public enum Bench {
                 }
             }
             for label in labels where label.name != "none" {
-                let expected = Bench.expectedKind(for: label.name)
+                guard let expected = Bench.expectedKind(for: label.name) else { continue }
                 recallTotals[label.name, default: 0] += 1
                 if fired.contains(where: { $0.kind == expected && label.start <= $0.t && $0.t <= label.end + 0.5 }) {
                     recallHits[label.name, default: 0] += 1
@@ -87,18 +87,20 @@ public enum Bench {
         }
     }
 
-    /// The action kind a gesture label should produce.
-    static func expectedKind(for gesture: String) -> String {
-        switch gesture {
-        case "engage", "moveCursor", "disengage": "engage"
-        case "click", "rightClick", "doubleClick": "click"
-        case "drag": "drag"
-        case "scroll": "scroll"
-        case "thumbsUp", "thumbsDown": "oneShot.\(gesture)"
-        case let flick where flick.hasPrefix("flick"): "flick.\(flick.dropFirst(5).lowercased())"
-        default: gesture
-        }
+    /// The action kind a gesture label should produce; nil for gestures that act on nothing
+    /// (letting go, moving the pointer, the hard stop), which recall does not score.
+    static func expectedKind(for label: String) -> String? {
+        Gesture(rawValue: label).flatMap { expectedKinds[$0] ?? nil }
     }
+
+    static let expectedKinds: [Gesture: String?] = [
+        .engage: "engage", .disengage: nil, .moveCursor: nil, .hardStop: nil,
+        .click: "click", .rightClick: "click", .doubleClick: "click", .drag: "drag", .scroll: "scroll",
+        .thumbsUp: "oneShot.thumbsUp", .thumbsDown: "oneShot.thumbsDown", .dictation: "oneShot.shaka",
+        .flickUp: "flick.up", .flickDown: "flick.down", .flickLeft: "flick.left", .flickRight: "flick.right",
+        .swipeLeft: "swipe.left", .swipeRight: "swipe.right", .swipeUp: "swipe.up",
+        .zoomIn: "zoom", .zoomOut: "zoom", .oops: "oops", .palette: "palette",
+    ]
 
     /// Still-hand cursor jitter, as `handyctl bench-cursor` measures it at 2 px noise.
     public static func jitter() -> Double {

@@ -43,9 +43,12 @@ public final class AppModel {
     /// A problem that clears itself after a few seconds, such as asking for Dictation when it is off.
     @ObservationIgnored private var transientProblem: Problem?
     @ObservationIgnored private var transientTask: Task<Void, Never>?
-    private(set) var onboarding: OnboardingModel?
-    @ObservationIgnored private var onboardingWindow: NSWindow?
-    private static let log = Logger(subsystem: "dev.handy", category: "app")
+    var onboarding: OnboardingModel?
+    var corpusRecorder: CorpusRecorderModel?
+    @ObservationIgnored var corpusWindow: NSWindow?
+    @ObservationIgnored var outputBeforeCorpus: OutputDriver?
+    @ObservationIgnored var onboardingWindow: NSWindow?
+    static let log = Logger(subsystem: "dev.handy", category: "app")
 
     /// The user's preset, sensitivity and camera. Saved and applied on every change.
     var settings = SettingsStore.load() {
@@ -143,54 +146,6 @@ public final class AppModel {
 
 }
 
-// MARK: Onboarding
-
-extension AppModel {
-
-    private static let onboardedKey = "onboarded"
-
-    /// Opens the tutorial window; shown automatically on first launch.
-    func showOnboarding() {
-        let onboarding =
-            onboarding
-            ?? OnboardingModel(
-                startTracking: { [weak self] in self?.send(.start) },
-                finish: { [weak self] calibration in self?.finishOnboarding(calibration) })
-        self.onboarding = onboarding
-        let window =
-            onboardingWindow
-            ?? NSWindow(
-                contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Welcome to Handy"
-        window.isReleasedWhenClosed = false
-        window.contentViewController = NSHostingController(
-            rootView: OnboardingView(model: onboarding) { [weak self] in self?.closeOnboarding() })
-        window.center()
-        onboardingWindow = window
-        NSApplication.shared.activate()
-        window.makeKeyAndOrderFront(nil)
-    }
-
-    private func closeOnboarding() {
-        onboardingWindow?.close()
-        onboarding = nil
-    }
-
-    private func finishOnboarding(_ calibration: Calibration?) {
-        UserDefaults.standard.set(true, forKey: Self.onboardedKey)
-        guard let calibration else { return }
-        do {
-            try CalibrationStore.save(calibration)
-        } catch {
-            Self.log.error("saving calibration failed: \(error.localizedDescription)")
-        }
-        self.calibration = calibration
-        applyTuning()
-    }
-
-    var needsOnboarding: Bool { !UserDefaults.standard.bool(forKey: Self.onboardedKey) }
-}
-
 extension AppModel {
 
     /// The chosen camera, persisted across launches. Switching restarts a running camera.
@@ -282,6 +237,7 @@ extension AppModel {
         lastFrameTime = frame.t
         recentFrames.append(frame)
         if !injecting { usage.tick(at: frame.t) }
+        corpusRecorder?.observe(frame)
         if let first = recentFrames.first, frame.t - first.t > OopsLog.keep + 1 || frame.t < first.t {
             recentFrames.removeAll { frame.t - $0.t > OopsLog.keep + 1 || $0.t > frame.t }
         }

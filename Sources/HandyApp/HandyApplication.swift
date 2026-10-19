@@ -87,6 +87,7 @@ struct MenuBarContent: View {
             NSWorkspace.shared.open(AppPaths.accidentalActionLog)
         }
         .disabled(model.oopsCount == 0)
+        Button("Record Corpus Session…") { model.showCorpusRecorder() }
         Button(model.tracking.recordingURL == nil ? "Start Recording Landmarks" : "Stop Recording Landmarks") {
             try? model.tracking.setRecording(model.tracking.recordingURL == nil)
         }
