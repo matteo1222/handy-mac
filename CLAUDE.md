@@ -36,3 +36,7 @@ Default five triage roles, applied as Backlog.md task labels. See `docs/agents/t
 ### Domain docs
 
 Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Agent guide
+
+Build, verify and app-proof commands are in [AGENTS.md](AGENTS.md); prove app behaviour with the [verify-handy](.agents/skills/verify-handy/SKILL.md) skill.

@@ -132,7 +132,12 @@ public struct PerceptionStats: Codable, Sendable, Equatable {
 }
 
 public enum ControlSocket {
+    /// `HANDY_CONTROL_SOCKET` overrides the path, so a verification instance never shares a socket
+    /// with the user's own Handy.
     public static var defaultPath: String {
+        if let override = ProcessInfo.processInfo.environment["HANDY_CONTROL_SOCKET"], !override.isEmpty {
+            return override
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appending(path: "Handy/control.sock").path(percentEncoded: false)
     }
