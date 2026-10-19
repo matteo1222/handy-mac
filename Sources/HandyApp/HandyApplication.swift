@@ -86,6 +86,9 @@ struct MenuBarContent: View {
             try? model.tracking.setRecording(model.tracking.recordingURL == nil)
         }
         Divider()
+        if model.updates.isAvailable {
+            Button("Check for Updates…") { model.updates.checkForUpdates() }
+        }
         Button("Quit Handy") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }

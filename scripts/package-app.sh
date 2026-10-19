@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Builds the Handy executable with SwiftPM and assembles a signed menu-bar .app bundle.
 # Usage: scripts/package-app.sh [debug|release]
-# Env: APP_IDENTITY (Developer ID; ad-hoc signed when unset), OUT_DIR (default .build/app)
+# Env: APP_IDENTITY (Developer ID; ad-hoc signed when unset), OUT_DIR (default .build/app),
+#      SPARKLE_FEED_URL and SPARKLE_PUBLIC_KEY (release builds only; without them updates stay off)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONF=${1:-debug}
 OUT_DIR=${OUT_DIR:-.build/app}
 APP_IDENTITY=${APP_IDENTITY:-}
+SPARKLE_FEED_URL=${SPARKLE_FEED_URL:-}
+SPARKLE_PUBLIC_KEY=${SPARKLE_PUBLIC_KEY:-}
 source version.env
 
 swift build -c "$CONF" --product Handy
@@ -15,11 +18,22 @@ BIN_DIR=$(swift build -c "$CONF" --show-bin-path)
 
 APP="$OUT_DIR/Handy.app"
 if [[ -d "$APP" ]]; then mv "$APP" "$(mktemp -d)/"; fi
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp "$BIN_DIR/Handy" "$APP/Contents/MacOS/Handy"
 shopt -s nullglob
 for bundle in "$BIN_DIR"/*.bundle; do cp -R "$bundle" "$APP/Contents/Resources/"; done
+for framework in "$BIN_DIR"/*.framework; do cp -R "$framework" "$APP/Contents/Frameworks/"; done
 shopt -u nullglob
+if ! otool -l "$APP/Contents/MacOS/Handy" | grep -q "@executable_path/../Frameworks"; then
+  install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Handy"
+fi
+
+SPARKLE_KEYS=""
+if [[ -n "$SPARKLE_FEED_URL" && -n "$SPARKLE_PUBLIC_KEY" ]]; then
+  SPARKLE_KEYS="<key>SUFeedURL</key><string>${SPARKLE_FEED_URL}</string>
+    <key>SUPublicEDKey</key><string>${SPARKLE_PUBLIC_KEY}</string>
+    <key>SUEnableAutomaticChecks</key><true/>"
+fi
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -36,14 +50,27 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSCameraUsageDescription</key><string>Handy reads your hand pose from the camera to move the pointer. Frames stay in memory and are never saved or sent.</string>
+    ${SPARKLE_KEYS}
 </dict>
 </plist>
 PLIST
 
 xattr -cr "$APP"
 if [[ -n "$APP_IDENTITY" ]]; then
-  codesign --force --timestamp --options runtime --entitlements Resources/Handy.entitlements --sign "$APP_IDENTITY" "$APP"
+  SIGN=(--force --timestamp --options runtime --sign "$APP_IDENTITY")
 else
-  codesign --force --entitlements Resources/Handy.entitlements --sign - "$APP"
+  SIGN=(--force --sign -)
 fi
+# Sign nested code inside-out: helpers and XPC services, then each framework, then the app.
+for framework in "$APP"/Contents/Frameworks/*.framework; do
+  [[ -d "$framework" ]] || continue
+  while IFS= read -r -d '' nested; do
+    codesign "${SIGN[@]}" "$nested"
+  done < <(find "$framework" \( -name "*.xpc" -o -name "*.app" \) -prune -print0)
+  while IFS= read -r -d '' binary; do
+    codesign "${SIGN[@]}" "$binary"
+  done < <(find "$framework/Versions/Current" -maxdepth 1 -type f -perm -111 -print0 2>/dev/null)
+  codesign "${SIGN[@]}" "$framework"
+done
+codesign "${SIGN[@]}" --entitlements Resources/Handy.entitlements "$APP"
 echo "$APP"

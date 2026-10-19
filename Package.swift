@@ -20,7 +20,8 @@ let package = Package(
         .executable(name: "handyctl", targets: ["handyctl"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.0")
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.0"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [
         .target(
@@ -34,7 +35,10 @@ let package = Package(
         .target(name: "HandyControl", dependencies: ["HandyCore"], swiftSettings: strict),
         .target(
             name: "HandyApp",
-            dependencies: ["HandyCore", "HandyPerception", "HandyOutput", "HandyReplay", "HandyControl"],
+            dependencies: [
+                "HandyCore", "HandyPerception", "HandyOutput", "HandyReplay", "HandyControl",
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             swiftSettings: strict
         ),
         .executableTarget(name: "Handy", dependencies: ["HandyApp"], swiftSettings: strict),

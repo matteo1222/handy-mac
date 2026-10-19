@@ -32,6 +32,7 @@ public final class AppModel {
     @ObservationIgnored private lazy var paletteOverlay = PalettePanel()
     @ObservationIgnored private lazy var cheatSheetPanel = CheatSheetPanel()
     @ObservationIgnored private var cheatSheetHotKey: GlobalHotKey?
+    @ObservationIgnored lazy var updates = Updates()
     @ObservationIgnored var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?

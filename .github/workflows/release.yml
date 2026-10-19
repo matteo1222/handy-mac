@@ -1,0 +1,68 @@
+name: release
+
+# Builds, signs with Developer ID, notarizes and staples Handy, then publishes the zip and the
+# Sparkle appcast to a GitHub release. Runs when a v* tag is pushed.
+#
+# Repository secrets (set by a maintainer with the Apple Developer account):
+#   DEVELOPER_ID_P12          base64 of the Developer ID Application certificate + key (.p12)
+#   DEVELOPER_ID_P12_PASSWORD password of that .p12
+#   DEVELOPER_ID_IDENTITY     e.g. "Developer ID Application: Name (TEAMID)"
+#   NOTARY_APPLE_ID, NOTARY_TEAM_ID, NOTARY_PASSWORD (app-specific password)
+#   SPARKLE_PRIVATE_KEY       EdDSA private key from Sparkle's generate_keys -x
+#   SPARKLE_PUBLIC_KEY        the matching public key
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install swiftlint
+      - name: make verify
+        run: make verify
+      - name: Import signing certificate
+        env:
+          P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN=$RUNNER_TEMP/signing.keychain-db
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+      - name: Store notary credentials
+        run: |
+          xcrun notarytool store-credentials handy --apple-id "${{ secrets.NOTARY_APPLE_ID }}" \
+            --team-id "${{ secrets.NOTARY_TEAM_ID }}" --password "${{ secrets.NOTARY_PASSWORD }}"
+      - name: Sign, notarize, staple
+        env:
+          APP_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+          NOTARY_PROFILE: handy
+          SPARKLE_FEED_URL: https://github.com/${{ github.repository }}/releases/latest/download/appcast.xml
+          SPARKLE_PUBLIC_KEY: ${{ secrets.SPARKLE_PUBLIC_KEY }}
+        run: scripts/sign-and-notarize.sh
+      - name: Appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          echo "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle.key"
+          TOOL=$(find .build/artifacts -path "*Sparkle*" -name generate_appcast -type f | head -1)
+          "$TOOL" --ed-key-file "$RUNNER_TEMP/sparkle.key" \
+            --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/" \
+            .build/release-app
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" --generate-notes \
+            .build/release-app/Handy-*.zip .build/release-app/appcast.xml

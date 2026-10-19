@@ -9,6 +9,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            GeneralSection()
             PresetSection(model: model)
             SensitivitySection(model: model)
             PaletteEditor(model: model)
@@ -259,5 +260,30 @@ struct PaletteEditor: View {
             } ?? NSWorkspace.shared.frontmostApplication
         guard let app, let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier else { return nil }
         return (id, app.localizedName ?? id)
+    }
+}
+
+struct GeneralSection: View {
+    @State private var openAtLogin = LaunchAtLogin.isEnabled
+    @State private var error: String?
+
+    var body: some View {
+        Section {
+            Toggle("Open Handy at login", isOn: $openAtLogin)
+                .onChange(of: openAtLogin) { _, enabled in
+                    do {
+                        try LaunchAtLogin.set(enabled)
+                        error = nil
+                    } catch {
+                        self.error = error.localizedDescription
+                        openAtLogin = LaunchAtLogin.isEnabled
+                    }
+                }
+            if let error {
+                Text(error).font(.callout).foregroundStyle(.red)
+            }
+        } header: {
+            Text("General")
+        }
     }
 }

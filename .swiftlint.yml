@@ -64,3 +64,8 @@ custom_rules:
     included: "Sources/(?!HandyOutput/).*"
     message: "Only HandyOutput touches the OS input stream"
     severity: error
+  no_network:
+    name: "No network access"
+    regex: '\b(URLSession|URLRequest|NWConnection|NWListener|NWBrowser|CFNetwork|WKWebView)\b'
+    message: "Handy makes no network calls; the Sparkle update check (Sources/HandyApp/Updates.swift) is the only one"
+    severity: error

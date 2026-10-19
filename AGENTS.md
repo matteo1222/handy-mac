@@ -14,6 +14,15 @@ input. SwiftPM only; no Xcode project. Docs: [docs/spec.md](docs/spec.md), [docs
 | Regenerate fixtures after an engine change | `scripts/fixtures.sh regen`, then review the git diff of every `.events.json` |
 | False actions, jitter, lag | `.build/release/handyctl bench corpus` (baseline `bench/baseline.json`) |
 
+If `swift package resolve` or a first build hangs, SwiftPM is waiting on a keychain prompt for
+github.com credentials; run `swift package resolve --disable-keychain` (every dependency is public).
+
+## Releasing
+
+`scripts/sign-and-notarize.sh` (Developer ID, hardened runtime, notarize, staple) and
+`scripts/make-appcast.sh` (Sparkle) need a maintainer's Apple credentials; `.github/workflows/release.yml`
+runs both on a `v*` tag once the repository secrets listed there are set.
+
 ## Proving app behaviour
 
 Use the [verify-handy](.agents/skills/verify-handy/SKILL.md) skill: it launches an isolated instance
