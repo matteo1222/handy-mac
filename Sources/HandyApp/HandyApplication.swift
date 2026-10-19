@@ -68,6 +68,10 @@ struct MenuBarContent: View {
             NSApplication.shared.activate()
             openWindow(id: WindowID.debugOverlay)
         }
+        Button("Accidental-Action Log (\(model.oopsCount))…") {
+            NSWorkspace.shared.open(AppPaths.accidentalActionLog)
+        }
+        .disabled(model.oopsCount == 0)
         Button(model.tracking.recordingURL == nil ? "Start Recording Landmarks" : "Stop Recording Landmarks") {
             try? model.tracking.setRecording(model.tracking.recordingURL == nil)
         }

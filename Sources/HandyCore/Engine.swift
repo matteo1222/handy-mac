@@ -11,6 +11,7 @@ public struct Engine: Sendable {
     private var oneShot: OneShotRecognizer
     private var flicks: FlickRecognizer
     private var swipes: SwipeRecognizer
+    private var oops: OopsRecognizer
     private let classifier: PoseClassifier
 
     public init(
@@ -24,6 +25,7 @@ public struct Engine: Sendable {
         oneShot = OneShotRecognizer(settings: settings.oneShot)
         flicks = FlickRecognizer(settings: settings.flick)
         swipes = SwipeRecognizer(settings: settings.swipe)
+        oops = OopsRecognizer(settings: settings.oops)
     }
 
     public var mode: Mode { state.mode }
@@ -94,7 +96,12 @@ public struct Engine: Sendable {
             flicks.reset()
             return transition(to: .arming(Arming(hand: hand.id, since: frame.t, lastSeen: frame.t)))
         }
-        // One-shots and flicks run only while not engaged, so a pointing hand never fires a shortcut.
+        // One-shots, flicks and the oops wag run only while not engaged, so a pointing hand never fires a shortcut.
+        if oops.update(pointerHand(in: frame), at: frame.t) {
+            flicks.reset()
+            oneShot.reset()
+            return [.oops]
+        }
         if let direction = flicks.update(pointerHand(in: frame), at: frame.t) {
             oneShot.reset()
             return [.flick(direction)]
@@ -227,6 +234,7 @@ public struct Engine: Sendable {
         if next != .watching {
             oneShot.reset()
             flicks.reset()
+            oops.reset()
         }
         if next != .watching, next.mode != .arming { swipes.reset() }
         if next == .watching, [.engaged, .dragging, .scrolling, .zooming].contains(previous) {
@@ -329,6 +337,8 @@ extension Engine {
         case swipe(Direction)
         /// One step of two-hand pinch zoom.
         case zoom(ZoomDirection)
+        /// The "no-no" finger wag: undo the last accidental action.
+        case oops
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -371,6 +381,7 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var flick = FlickSettings()
     public var swipe = SwipeSettings()
     public var zoom = ZoomSettings()
+    public var oops = OopsSettings()
     /// The open palm counts as held only below this palm speed, in frame heights per second.
     public var armMaxSpeed = 0.6
     /// Camera frame width over height; set from the live camera.

@@ -3,10 +3,7 @@ import HandyCore
 
 /// Calibration lives in Application Support as plain JSON numbers.
 enum CalibrationStore {
-    static var url: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appending(path: "Handy/calibration.json")
-    }
+    static var url: URL { AppPaths.calibration }
 
     static func load() -> Calibration? {
         guard let data = try? Data(contentsOf: url) else { return nil }

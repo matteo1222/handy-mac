@@ -201,8 +201,7 @@ final class LiveTracking {
     func setRecording(_ on: Bool) throws {
         if on {
             guard recorder == nil else { return }
-            let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appending(path: "Handy/Recordings")
+            let folder = AppPaths.recordings
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let name = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
                 .replacingOccurrences(of: ":", with: "")

@@ -38,4 +38,6 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case zoomOut
     /// Shaka held 500 ms while not engaged: toggles Dictation.
     case dictation
+    /// "No-no" index-finger wag while not engaged: ⌘Z and a false-positive sample.
+    case oops
 }

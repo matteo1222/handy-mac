@@ -110,4 +110,8 @@ fixture scenarios/clickWithOtherHandVisibleIsAClick --script "openPalm:700ms@1.1
 # Dictation (TASK-24)
 fixture gestures/dictation --script "relaxed:400ms shaka:800ms relaxed:400ms" --noise 1px --seed 55
 
+# Oops (TASK-20): a "no-no" wag of the pointing finger
+fixture gestures/oops --script "relaxed:300ms point:400ms point:150ms/-25 point:150ms/25 point:150ms/-25 point:150ms/25 point:400ms" --noise 1px --seed 56
+fixture scenarios/twoSwingsAreNotOops --script "relaxed:300ms point:400ms point:150ms/-25 point:150ms/25 point:600ms/25" --noise 1px --seed 57
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

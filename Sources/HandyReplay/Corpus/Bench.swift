@@ -41,6 +41,9 @@ public enum Bench {
         case .scroll(_, _, .began): "scroll"
         case .oneShot(let pose): "oneShot.\(pose.rawValue)"
         case .flick(let direction): "flick.\(direction.rawValue)"
+        case .swipe(let direction): "swipe.\(direction.rawValue)"
+        case .zoom: "zoom"
+        case .oops: "oops"
         default: nil
         }
     }

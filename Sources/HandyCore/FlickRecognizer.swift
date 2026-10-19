@@ -3,6 +3,16 @@ public enum Direction: String, Sendable, Codable, CaseIterable {
     case down
     case left
     case right
+
+    /// Unit vector in image coordinates (y down).
+    public var unit: Point {
+        switch self {
+        case .up: Point(x: 0, y: -1)
+        case .down: Point(x: 0, y: 1)
+        case .left: Point(x: -1, y: 0)
+        case .right: Point(x: 1, y: 0)
+        }
+    }
 }
 
 public struct FlickSettings: Sendable, Hashable, Codable {
@@ -20,9 +30,13 @@ public struct FlickSettings: Sendable, Hashable, Codable {
     /// Gesturing while talking keeps the hand moving, so it rarely shows the still-then-snap of a flick.
     public var rest = 0.15
     public var restTravel = 0.15
-    /// A flick ends still pointing: it fires only after the pose has held this long past the travel,
-    /// so a hand leaving the pointing pose mid-turn does not fire.
+    /// A flick ends still pointing and at rest: it fires only after the pose has held still this long
+    /// past the travel, so a hand leaving the pose mid-turn, or a wag, does not fire.
     public var confirm = 0.1
+    /// Per-frame tip motion (hand scales) below which the tip counts as settled.
+    public var settled = 0.05
+    /// Motion back against the flick (hand scales per frame) that marks a wag and cancels it.
+    public var reversal = 0.1
 
     public init() {}
 }
@@ -42,6 +56,8 @@ public struct FlickRecognizer: Sendable, Equatable {
     struct Pending: Sendable, Equatable {
         var direction: Direction
         var at: Double
+        var tip: Point
+        var scale: Double
     }
 
     struct Sample: Sendable, Equatable {
@@ -71,12 +87,25 @@ public struct FlickRecognizer: Sendable, Equatable {
         poseSince = since
         // Normalise by the scale at the start of the window: tipping the hand foreshortens the palm
         // as much as the finger, so dividing by the current scale would hide the flick.
-        if let pending {
+        let tip = indexTip - wrist
+        if var pending {
+            // Wait for the fingertip to settle; swinging back (a wag) cancels the flick.
+            let step = (tip - pending.tip) / pending.scale
+            let along = step.x * pending.direction.unit.x + step.y * pending.direction.unit.y
+            if along < -settings.reversal {
+                self.pending = nil
+                return nil
+            }
+            if step.length > settings.settled {
+                pending.tip = tip
+                pending.at = t
+                self.pending = pending
+                return nil
+            }
             guard t - pending.at >= settings.confirm else { return nil }
             self.pending = nil
             return pending.direction
         }
-        let tip = indexTip - wrist
         history.append(Sample(t: t, tip: tip, scale: hand.scale))
         history.removeAll { t - $0.t > settings.window + settings.rest }
         guard t >= quietUntil, t - since >= settings.settle + settings.rest,
@@ -93,7 +122,7 @@ public struct FlickRecognizer: Sendable, Equatable {
         history = []
         let direction: Direction =
             abs(travel.x) > abs(travel.y) ? (travel.x > 0 ? .right : .left) : (travel.y > 0 ? .down : .up)
-        pending = Pending(direction: direction, at: t)
+        pending = Pending(direction: direction, at: t, tip: tip, scale: first.scale)
         return nil
     }
 

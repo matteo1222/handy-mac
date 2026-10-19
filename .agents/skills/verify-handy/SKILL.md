@@ -21,9 +21,10 @@ eval "$(scripts/verify/launch.sh)"
 ```
 
 Builds `.build/app/Handy.app`, starts it from its executable on its own socket
-(`/tmp/handy-verify-<pid>.sock`), waits until it answers, and exports `HANDY_CONTROL_SOCKET` so
-every later `handyctl` call in this shell reaches that instance. It refuses to start a second
-instance. State and logs live in `.build/verify/`.
+(`/tmp/handy-verify-<pid>.sock`) with its own data directory (`HANDY_DATA_DIR=.build/verify/data`:
+calibration, recordings, oops samples and the accidental-action log), waits until it answers, and
+exports `HANDY_CONTROL_SOCKET` so every later `handyctl` call in this shell reaches that instance.
+It refuses to start a second instance. State and logs live in `.build/verify/`.
 
 The instance shares UserDefaults with an installed Handy (same bundle id): on a machine that never
 finished the tutorial, the onboarding window opens at launch. That is expected.

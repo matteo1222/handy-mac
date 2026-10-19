@@ -4,10 +4,9 @@
   ],
   "falseActions" : {
     "engage" : 1,
-    "flick.down" : 1,
-    "flick.up" : 1
+    "flick.down" : 1
   },
-  "falseActionsPerHour" : 1.49,
+  "falseActionsPerHour" : 0.993,
   "gestureRecall" : {
 
   },
@@ -16,9 +15,9 @@
   "noGestureHours" : 2.013,
   "processingMicroseconds" : {
     "count" : 217444,
-    "max" : 1941.8,
-    "mean" : 3.6,
-    "p50" : 3,
+    "max" : 40.2,
+    "mean" : 3.5,
+    "p50" : 2.9,
     "p95" : 6.5
   }
 }

@@ -12,21 +12,24 @@ import os
 @MainActor
 @Observable
 public final class AppModel {
-    public private(set) var mode: Engine.Mode = .off
+    public internal(set) var mode: Engine.Mode = .off
     let tracking: LiveTracking
-    @ObservationIgnored private var session = Session(engine: Engine(mode: .off))
-    @ObservationIgnored private var output = OutputDriver(sink: CGEventSink(), environment: LivePointerEnvironment())
+    @ObservationIgnored var session = Session(engine: Engine(mode: .off))
+    @ObservationIgnored var output = OutputDriver(sink: CGEventSink(), environment: LivePointerEnvironment())
     @ObservationIgnored private var lastFrameTime = 0.0
-    @ObservationIgnored private var recentEvents: [TimedEvent] = []
+    @ObservationIgnored var recentEvents: [TimedEvent] = []
+    /// The last few seconds of frames, for oops samples.
+    @ObservationIgnored private var recentFrames: [LandmarkFrame] = []
+    private(set) var oopsCount = OopsLog.count()
     @ObservationIgnored private var router = ActionRouter()
     /// Collects every event while a clip is injected; nil otherwise.
-    @ObservationIgnored private var injectedEvents: [TimedEvent]?
-    private var injecting: Bool { injectedEvents != nil }
-    @ObservationIgnored private var stopHotKey: GlobalHotKey?
+    @ObservationIgnored var injectedEvents: [TimedEvent]?
+    var injecting: Bool { injectedEvents != nil }
+    @ObservationIgnored var stopHotKey: GlobalHotKey?
     @ObservationIgnored private var controlServer: ControlServer?
-    @ObservationIgnored private var hud: HUDPanel?
+    @ObservationIgnored var hud: HUDPanel?
     @ObservationIgnored private lazy var cursorRing = CursorRingPanel()
-    @ObservationIgnored private var hudState: HUDState?
+    @ObservationIgnored var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?
     /// A problem that clears itself after a few seconds, such as asking for Dictation when it is off.
@@ -118,6 +121,15 @@ extension AppModel {
         }
     }
 
+    private func recordOops(at t: Double) {
+        do {
+            try OopsLog.record(frames: recentFrames, at: t, undid: lastAction)
+            oopsCount += 1
+        } catch {
+            Self.log.error("saving the oops sample failed: \(error.localizedDescription)")
+        }
+    }
+
     /// Shows a problem for a few seconds.
     func show(transient problem: Problem) {
         transientProblem = problem
@@ -166,8 +178,12 @@ extension AppModel {
         updateHUD()
     }
 
-    private func process(_ frame: LandmarkFrame) {
+    func process(_ frame: LandmarkFrame) {
         lastFrameTime = frame.t
+        recentFrames.append(frame)
+        if let first = recentFrames.first, frame.t - first.t > OopsLog.keep + 1 || frame.t < first.t {
+            recentFrames.removeAll { frame.t - $0.t > OopsLog.keep + 1 || $0.t > frame.t }
+        }
         if !injecting, abs(session.engine.settings.frameAspect - tracking.lastAspect) > 0.01 {
             var settings = session.engine.settings
             settings.frameAspect = tracking.lastAspect
@@ -197,6 +213,7 @@ extension AppModel {
             if case .modeChanged(let mode) = timed.event { changeMode(to: mode) }
             output.handle(timed.event, at: timed.t)
             if let description = timed.event.actionDescription { lastAction = description }
+            if timed.event == .oops { recordOops(at: timed.t) }
             for action in router.actions(for: timed.event) {
                 output.perform(action)
                 lastAction = action.description
@@ -240,7 +257,7 @@ extension AppModel {
     }
 
     /// Shows the pill while Handy is on; after turning off it says "Off" briefly, then hides.
-    private func updateHUD() {
+    func updateHUD() {
         let state = currentHUD
         guard state != hudState else { return }
         hudState = state
@@ -259,127 +276,6 @@ extension AppModel {
 
 }
 
-// MARK: handyctl
-
-extension AppModel {
-
-    var snapshot: AppStateSnapshot {
-        AppStateSnapshot(
-            mode: mode, stopHotKey: stopHotKey == nil ? nil : GlobalHotKey.stopDisplay,
-            camera: tracking.camera.description, recording: tracking.recordingURL?.path(percentEncoded: false),
-            perception: tracking.stats,
-            hud: hudState.map {
-                HUDSnapshot(
-                    visible: hud?.isVisible ?? false, title: $0.title, detail: $0.detail, progress: $0.progress,
-                    fix: $0.fix?.title)
-            },
-            accessibilityGranted: AccessibilityPermission.isGranted,
-            output: OutputStats(posted: output.posted, refused: output.failed, blocked: output.isBlocked),
-            lastEvents: recentEvents,
-            settings: session.engine.settings)
-    }
-
-    private func handle(_ request: ControlRequest) async -> ControlResponse {
-        switch request {
-        case .state:
-            return ControlResponse(state: snapshot)
-        case .command(let command):
-            send(command)
-            return ControlResponse(state: snapshot)
-        case .screenshot(let target, let path):
-            return attempt("screenshot") { try Screenshots.render(target, model: self, to: URL(filePath: path)) }
-        case .record(let on):
-            return attempt("recording") { try tracking.setRecording(on) }
-        case .simulateCamera(let event):
-            return attempt("camera") { try simulate(named: event) }
-        case .applyFix:
-            return attempt("fix") {
-                guard let fix = problem?.fix else { throw ControlError("no problem with a fix right now") }
-                apply(fix)
-            }
-        case .inject(let frames, let record, let realtime):
-            guard !injecting else { return ControlResponse(ok: false, error: "already injecting", state: snapshot) }
-            let result = await inject(frames, record: record, realtime: realtime)
-            return ControlResponse(state: snapshot, injected: result)
-        }
-    }
-
-    private func attempt(_ label: String, _ body: () throws -> Void) -> ControlResponse {
-        do {
-            try body()
-            return ControlResponse(state: snapshot)
-        } catch {
-            return ControlResponse(ok: false, error: "\(label): \(error)", state: snapshot)
-        }
-    }
-
-    /// Feeds a clip through the app's own session in place of the camera. Live frames are ignored
-    /// meanwhile; afterwards the session starts fresh so clip and camera timestamps never mix.
-    private func inject(_ frames: [LandmarkFrame], record: Bool, realtime: Bool) async -> InjectResult {
-        injectedEvents = []
-        let liveOutput = output
-        let recorder = RecordingSink()
-        if record { output = OutputDriver(sink: recorder, environment: VirtualPointerEnvironment()) }
-        let wasOff = mode == .off
-        session = Session(engine: Engine(mode: .watching, settings: session.engine.settings))
-        mode = .watching
-        let start = ContinuousClock.now
-        for frame in frames {
-            if realtime, let first = frames.first {
-                try? await Task.sleep(until: start + .seconds(frame.t - first.t))
-            }
-            process(frame)
-        }
-        let events = injectedEvents ?? []
-        output = liveOutput
-        session = Session(engine: Engine(mode: wasOff ? .off : .watching, settings: session.engine.settings))
-        mode = wasOff ? .off : .watching
-        injectedEvents = nil
-        updateHUD()
-        return InjectResult(events: events, actions: recorder.actions)
-    }
-}
-
-/// Camera conditions handyctl can stage, to check the HUD says them plainly without unplugging anything.
-enum SimulatedCameraEvent: String, CaseIterable {
-    case inUse
-    case disconnected
-    case resumed
-    case dark
-    case bright
-}
-
-struct ControlError: Error, CustomStringConvertible {
-    let description: String
-
-    init(_ description: String) {
-        self.description = description
-    }
-}
-
-extension AppModel {
-    fileprivate func simulate(named name: String) throws {
-        guard let event = SimulatedCameraEvent(rawValue: name) else {
-            let names = SimulatedCameraEvent.allCases.map(\.rawValue).joined(separator: ", ")
-            throw ControlError("unknown camera event \(name); use \(names)")
-        }
-        simulate(event)
-    }
-
-    fileprivate func simulate(_ event: SimulatedCameraEvent) {
-        switch event {
-        case .inUse: tracking.handle(.interrupted(.inUseByAnotherApp))
-        case .disconnected: tracking.handle(.interrupted(.disconnected))
-        case .resumed: tracking.handle(.resumed)
-        case .dark:
-            tracking.handle(.resumed)
-            for step in 0...70 { tracking.observeBrightness(0.04, at: Double(step) / 30) }
-        case .bright: tracking.observeBrightness(0.5, at: 10)
-        }
-        updateHUD()
-    }
-}
-
 extension Engine.Event {
     /// What the HUD names as the last action, for events that act on the OS.
     var actionDescription: String? {
@@ -391,7 +287,7 @@ extension Engine.Event {
         case .click(.right, _): "Right click"
         case .dragBegan: "Drag"
         case .dragEnded: "Drop"
-        case .scroll, .oneShot, .flick, .swipe, .zoom: nil
+        case .scroll, .oneShot, .flick, .swipe, .zoom, .oops: nil
         }
     }
 }

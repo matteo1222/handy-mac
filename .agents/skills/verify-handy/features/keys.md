@@ -9,6 +9,9 @@ wrist flick with the index pointing presses an arrow key.
   progress arc in the HUD naming the binding.
 - Flicks up, down, left, right (wrist-relative, from rest, confirmed after 100 ms).
 - Keys resolve through the current keyboard layout.
+- Oops: a "no-no" wag of the pointing finger sends ⌘Z, saves the landmarks before it as a
+  false-positive sample (`$HANDY_DATA_DIR/FalsePositives/*.lmk`) and logs a line in
+  `accidental-actions.log` (menu: Accidental-Action Log).
 
 ## How to get to it (user POV)
 
@@ -21,6 +24,14 @@ F=Tests/HandyReplayTests/Fixtures
 .build/debug/handyctl inject $F/gestures/thumbsUp.lmk     # one keyStroke returnKey
 .build/debug/handyctl inject $F/gestures/flickLeft.lmk    # one keyStroke left
 .build/debug/handyctl inject $F/scenarios/thumbsUpWhileEngagedDoesNothing.lmk   # no keyStroke
+```
+
+Oops needs a few seconds of lead-in for its sample:
+
+```bash
+.build/debug/handyctl synth --script "relaxed:3s point:400ms point:150ms/-25 point:150ms/25 point:150ms/-25 point:150ms/25 point:400ms" -o .build/verify/oops.lmk
+.build/debug/handyctl inject .build/verify/oops.lmk     # one keyStroke ⌘Z
+cat .build/verify/data/accidental-actions.log           # one line naming the sample
 ```
 
 Proof: exactly one `keyStroke` action with the expected key; `state.hud.detail` names it.
