@@ -47,6 +47,12 @@ struct Synth: ParsableCommand {
     @Option(help: "Probability a joint reports low confidence.")
     var confidenceLoss: Double = 0
 
+    @Option(help: "Comma-separated joints that always report low confidence, e.g. thumbTip,indexTip.")
+    var dimJoints: String?
+
+    @Option(help: "Confidence reported by --dim-joints.")
+    var dimConfidence: Double = 0.4
+
     @Option(help: "Random seed; the same seed gives the same clip.")
     var seed: UInt64 = 1
 
@@ -71,7 +77,16 @@ struct Synth: ParsableCommand {
         guard noise.hasSuffix("px"), let jitter = Double(noise.dropLast(2)) else {
             throw ValidationError("--noise must look like 2px")
         }
-        let synthNoise = SynthNoise(jitterPixels: jitter, dropout: dropout, confidenceLoss: confidenceLoss, seed: seed)
+        var dimmed: Set<Joint> = []
+        for name in dimJoints?.split(separator: ",") ?? [] {
+            guard let joint = Joint.allCases.first(where: { "\($0)" == name }) else {
+                throw ValidationError("unknown joint \(name)")
+            }
+            dimmed.insert(joint)
+        }
+        let synthNoise = SynthNoise(
+            jitterPixels: jitter, dropout: dropout, confidenceLoss: confidenceLoss, dimJoints: dimmed,
+            dimConfidence: dimConfidence, seed: seed)
         let command = (["handyctl", "synth"] + CommandLine.arguments.dropFirst(2)).joined(separator: " ")
         let stream = Synthesizer.stream(clip, noise: synthNoise, meta: ["command": command])
         try stream.write(to: URL(filePath: output))

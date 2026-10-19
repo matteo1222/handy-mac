@@ -9,12 +9,20 @@ public struct SynthNoise: Sendable, Equatable {
     public var dropout: Double
     /// Probability that a joint reports low confidence (0.1) in a frame, as in dim light.
     public var confidenceLoss: Double
+    /// Joints that always report `dimConfidence`, e.g. fingertips hidden from a front camera.
+    public var dimJoints: Set<Joint>
+    public var dimConfidence: Double
     public var seed: UInt64
 
-    public init(jitterPixels: Double = 0, dropout: Double = 0, confidenceLoss: Double = 0, seed: UInt64 = 1) {
+    public init(
+        jitterPixels: Double = 0, dropout: Double = 0, confidenceLoss: Double = 0, dimJoints: Set<Joint> = [],
+        dimConfidence: Double = 0.4, seed: UInt64 = 1
+    ) {
         self.jitterPixels = jitterPixels
         self.dropout = dropout
         self.confidenceLoss = confidenceLoss
+        self.dimJoints = dimJoints
+        self.dimConfidence = dimConfidence
         self.seed = seed
     }
 
@@ -118,7 +126,7 @@ public enum Synthesizer {
     }
 
     private static func perturb(_ pose: HandPose, noise: SynthNoise, random: inout SeededRandom) -> HandPose {
-        guard noise.jitterPixels > 0 || noise.confidenceLoss > 0 else { return pose }
+        guard noise.jitterPixels > 0 || noise.confidenceLoss > 0 || !noise.dimJoints.isEmpty else { return pose }
         var result = pose
         let sigma = noise.jitterPixels / 720
         for joint in Joint.allCases {
@@ -128,6 +136,7 @@ public enum Synthesizer {
                     x: sample.point.x + random.gaussian() * sigma, y: sample.point.y + random.gaussian() * sigma)
             }
             if noise.confidenceLoss > 0, random.unit() < noise.confidenceLoss { sample.confidence = 0.1 }
+            if noise.dimJoints.contains(joint) { sample.confidence = noise.dimConfidence }
             result[joint] = sample
         }
         return result

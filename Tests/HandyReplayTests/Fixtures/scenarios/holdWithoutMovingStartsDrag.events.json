@@ -1,0 +1,50 @@
+[
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "arming"
+      }
+    },
+    "t" : 0
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "engaged"
+      }
+    },
+    "t" : 0.3
+  },
+  {
+    "event" : {
+      "dragBegan" : {
+        "button" : "left"
+      }
+    },
+    "t" : 1.066667
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "dragging"
+      }
+    },
+    "t" : 1.066667
+  },
+  {
+    "event" : {
+      "dragEnded" : {
+        "button" : "left"
+      }
+    },
+    "t" : 1.366667
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "engaged"
+      }
+    },
+    "t" : 1.366667
+  }
+]

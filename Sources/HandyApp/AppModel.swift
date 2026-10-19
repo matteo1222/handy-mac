@@ -22,6 +22,7 @@ public final class AppModel {
     @ObservationIgnored private var stopHotKey: GlobalHotKey?
     @ObservationIgnored private var controlServer: ControlServer?
     @ObservationIgnored private var hud: HUDPanel?
+    @ObservationIgnored private lazy var cursorRing = CursorRingPanel()
     @ObservationIgnored private var hudState: HUDState?
     @ObservationIgnored private var hideHUDTask: Task<Void, Never>?
     @ObservationIgnored private(set) var lastAction: String?
@@ -62,6 +63,13 @@ public final class AppModel {
         apply(session.process(frame))
         tracking.publishDebug(session.lastFeatures, for: frame)
         updateHUD()
+        updateCursorRing()
+    }
+
+    private func updateCursorRing() {
+        let status = session.engine.status(at: lastFrameTime)
+        let shown = (status.mode == .engaged || status.mode == .dragging) && !injecting
+        cursorRing.update(closeness: shown ? status.pinch : nil, pressed: status.pinch == 1)
     }
 
     private func apply(_ events: [TimedEvent]) {
@@ -79,6 +87,7 @@ public final class AppModel {
         let wasOff = self.mode == .off
         self.mode = mode
         guard !injecting else { return }
+        if mode != .engaged, mode != .dragging { cursorRing.update(closeness: nil, pressed: false) }
         if mode == .off {
             tracking.stop()
             session.resetTracking()
@@ -194,7 +203,13 @@ extension Engine.Event {
     /// What the HUD names as the last action, for events that act on the OS.
     var actionDescription: String? {
         switch self {
-        case .modeChanged, .moveCursor: nil
+        case .modeChanged, .moveCursor, .dragMoved: nil
+        case .click(.left, 1): "Click"
+        case .click(.left, 2): "Double click"
+        case .click(.left, _): "Triple click"
+        case .click(.right, _): "Right click"
+        case .dragBegan: "Drag"
+        case .dragEnded: "Drop"
         }
     }
 }

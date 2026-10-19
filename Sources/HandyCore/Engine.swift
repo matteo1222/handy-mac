@@ -26,6 +26,8 @@ public struct Engine: Sendable {
         switch state {
         case .arming(let arming):
             Status(mode: mode, progress: min(max((t - arming.since) / settings.armHold, 0), 1))
+        case .engaged(let engaged):
+            Status(mode: mode, progress: nil, pinch: engaged.closeness)
         default:
             Status(mode: mode, progress: nil)
         }
@@ -70,7 +72,11 @@ public struct Engine: Sendable {
         if arming.notOpenSince == nil, t - arming.since >= settings.armHold {
             var pointer = PointerTracker(settings: settings.pointer)
             pointer.reanchor(at: hand.palmCentroid, t: t)
-            return transition(to: .engaged(Engaged(hand: hand.id, lastSeen: t, pointer: pointer)))
+            return transition(
+                to: .engaged(
+                    Engaged(
+                        hand: hand.id, lastSeen: t, pointer: pointer, clicks: ClickRecognizer(settings: settings.click)
+                    )))
         }
         state = .arming(arming)
         return []
@@ -80,11 +86,12 @@ public struct Engine: Sendable {
         var engaged = current
         let t = frame.t
         guard let hand = frame.hands.first(where: { $0.id == engaged.hand }) else {
-            return t - engaged.lastSeen >= settings.handLostGrace ? transition(to: .watching) : []
+            guard t - engaged.lastSeen >= settings.handLostGrace else { return [] }
+            return engaged.clicks.cancel() + transition(to: .watching)
         }
         engaged.lastSeen = t
         var events: [Event] = []
-        if isFist(hand) {
+        if isFist(hand), case .idle = engaged.clicks.phase {
             let since = engaged.fistSince ?? t
             if t - since >= settings.fistDwell { return transition(to: .watching) }
             engaged.fistSince = since
@@ -92,11 +99,15 @@ public struct Engine: Sendable {
             engaged.pointer.reanchor(at: hand.palmCentroid, t: t)
         } else {
             engaged.fistSince = nil
-            if let delta = engaged.pointer.delta(for: hand.palmCentroid, at: t) {
-                events.append(.moveCursor(dx: delta.x, dy: delta.y))
-            }
+            let delta = engaged.pointer.delta(for: hand.palmCentroid, at: t)
+            events = engaged.clicks.update(
+                pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle, delta: delta,
+                palm: hand.palmCentroid * settings.pointer.slowGain, at: t)
         }
+        engaged.closeness = engaged.clicks.closeness(pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle)
+        let wasDragging = current.isDragging
         state = .engaged(engaged)
+        if engaged.isDragging != wasDragging { events.append(.modeChanged(to: mode)) }
         return events
     }
 
@@ -129,6 +140,7 @@ extension Engine {
         case watching
         case arming
         case engaged
+        case dragging
     }
 
     public enum State: Sendable, Equatable {
@@ -142,7 +154,7 @@ extension Engine {
             case .off: .off
             case .watching: .watching
             case .arming: .arming
-            case .engaged: .engaged
+            case .engaged(let engaged): engaged.isDragging ? .dragging : .engaged
             }
         }
     }
@@ -160,6 +172,14 @@ extension Engine {
         public var lastSeen: Double
         public var fistSince: Double?
         public var pointer: PointerTracker
+        public var clicks: ClickRecognizer
+        /// How closed the pinch is, 0...1, for the cursor ring.
+        public var closeness: Double?
+
+        public var isDragging: Bool {
+            if case .dragging = clicks.phase { return true }
+            return false
+        }
     }
 
     /// User-level commands from the menu bar, the hotkey or handyctl.
@@ -178,16 +198,25 @@ extension Engine {
         case modeChanged(to: Mode)
         /// Relative cursor motion in points.
         case moveCursor(dx: Double, dy: Double)
+        /// A press and release; `count` is 2 for a double click.
+        case click(button: MouseButton, count: Int)
+        case dragBegan(button: MouseButton)
+        /// Relative drag motion in points.
+        case dragMoved(dx: Double, dy: Double)
+        case dragEnded(button: MouseButton)
     }
 
     public struct Status: Sendable, Equatable, Codable {
         public var mode: Mode
         /// Arming progress 0...1 for the progress ring; nil when not arming.
         public var progress: Double?
+        /// Pinch closeness 0...1 for the cursor ring; nil when not engaged or unknown.
+        public var pinch: Double?
 
-        public init(mode: Mode, progress: Double?) {
+        public init(mode: Mode, progress: Double?, pinch: Double? = nil) {
             self.mode = mode
             self.progress = progress
+            self.pinch = pinch
         }
     }
 }
@@ -206,6 +235,7 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     /// `palmFacing` at or above this counts as facing the camera.
     public var palmFacingMinimum = 0.5
     public var pointer = PointerSettings()
+    public var click = ClickSettings()
 
     public init() {}
 }

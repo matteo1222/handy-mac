@@ -46,4 +46,17 @@ fixture gestures/moveCursor --script "openPalm:600ms@0.7,0.7 openPalm:600ms->1.1
 fixture scenarios/stillHandStillCursor --script "openPalm:3s" --noise 2px --seed 10
 fixture scenarios/fistDoesNotDragCursor --script "openPalm:600ms fist:400ms" --noise 1px --seed 11
 
+# Clicks (TASK-7)
+fixture gestures/click --script "openPalm:700ms pinch:150ms openPalm:400ms" --noise 1px --seed 12
+fixture gestures/rightClick --script "openPalm:700ms pinchMiddle:150ms openPalm:400ms" --noise 1px --seed 13
+fixture scenarios/nearMissPinchNeverClicks --script "openPalm:700ms nearPinch:400ms openPalm:300ms nearPinch:400ms openPalm:300ms" --noise 1.5px --seed 14
+fixture scenarios/lowConfidenceTipsNeverClick --script "openPalm:700ms pinch:150ms openPalm:400ms" --noise 1px --dim-joints thumbTip,indexTip --seed 15
+fixture scenarios/clickLandsWhereAimed --script "openPalm:700ms@0.8,0.7 openPalm:300ms->0.9,0.7 pinch:200ms->0.904,0.7 openPalm:300ms" --noise 1px --seed 16
+
+# Drag and double click (TASK-8)
+fixture gestures/drag --script "openPalm:700ms@0.8,0.7 pinch:400ms pinch:600ms->1.0,0.6 openPalm:400ms" --noise 1px --seed 17
+fixture gestures/doubleClick --script "openPalm:700ms pinch:120ms openPalm:130ms pinch:120ms openPalm:400ms" --noise 1px --seed 18
+fixture scenarios/twoSlowClicksStaySingle --script "openPalm:700ms pinch:120ms openPalm:600ms pinch:120ms openPalm:400ms" --noise 1px --seed 19
+fixture scenarios/holdWithoutMovingStartsDrag --script "openPalm:700ms pinch:600ms openPalm:300ms" --noise 1px --seed 20
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

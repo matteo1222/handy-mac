@@ -33,6 +33,8 @@ struct HUDState: Equatable {
                 tone: .active)
         case .engaged:
             return HUDState(symbol: "hand.raised.fill", title: "Engaged", detail: detail, progress: nil, tone: .active)
+        case .dragging:
+            return HUDState(symbol: "hand.pinch.fill", title: "Dragging", detail: nil, progress: nil, tone: .active)
         }
     }
 }

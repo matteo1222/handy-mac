@@ -1,0 +1,27 @@
+[
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "arming"
+      }
+    },
+    "t" : 0
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "engaged"
+      }
+    },
+    "t" : 0.3
+  },
+  {
+    "event" : {
+      "click" : {
+        "button" : "left",
+        "count" : 1
+      }
+    },
+    "t" : 0.933333
+  }
+]

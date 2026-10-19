@@ -8,4 +8,12 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case disengage
     /// Moving the open hand while engaged.
     case moveCursor
+    /// Thumb-index pinch tap.
+    case click
+    /// Thumb-middle pinch tap.
+    case rightClick
+    /// Pinch held past 250 ms or moved past 8 pt, then released.
+    case drag
+    /// Two pinch taps within 350 ms.
+    case doubleClick
 }

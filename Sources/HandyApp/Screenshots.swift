@@ -17,7 +17,7 @@ enum Screenshots {
         }
     }
 
-    nonisolated static let targets = ["hud", "hud-gallery"]
+    nonisolated static let targets = ["hud", "hud-gallery", "cursor-ring"]
 
     static func render(_ target: String, model: AppModel, to url: URL) throws {
         let view: AnyView
@@ -26,6 +26,13 @@ enum Screenshots {
             view = AnyView(HUDView(state: model.currentHUD).padding(12))
         case "hud-gallery":
             view = AnyView(HUDGallery().padding(12))
+        case "cursor-ring":
+            view = AnyView(
+                HStack {
+                    ForEach([0.0, 0.33, 0.66, 1.0], id: \.self) { closeness in
+                        CursorRingView(closeness: closeness, pressed: closeness == 1)
+                    }
+                }.padding(12))
         default:
             throw Failure.unknownTarget(target)
         }
@@ -55,7 +62,8 @@ struct HUDGallery: View {
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: nil),
         .make(status: .init(mode: .arming, progress: 0.35), lastAction: nil, problem: nil),
         .make(status: .init(mode: .arming, progress: 0.8), lastAction: nil, problem: nil),
-        .make(status: .init(mode: .engaged, progress: nil), lastAction: "Left click", problem: nil),
+        .make(status: .init(mode: .engaged, progress: nil), lastAction: "Double click", problem: nil),
+        .make(status: .init(mode: .dragging, progress: nil), lastAction: nil, problem: nil),
         .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: "Camera in use by another app"),
     ]
 }

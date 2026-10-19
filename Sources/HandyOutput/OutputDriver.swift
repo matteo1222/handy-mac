@@ -59,6 +59,7 @@ public final class OutputDriver {
     public let sink: any EventSink
     public let environment: any PointerEnvironment
     private var edge = EdgeStick()
+    private var dragging: MouseButton?
     /// True after a post failed for lack of Accessibility permission; cleared by the next success.
     public private(set) var isBlocked = false
     public private(set) var posted = 0
@@ -74,13 +75,31 @@ public final class OutputDriver {
         case .modeChanged:
             edge = EdgeStick()
         case .moveCursor(let dx, let dy):
-            let from = environment.cursor
-            let screen = environment.screens.first { $0.contains(from) } ?? environment.screens.first
-            guard let screen else { return }
-            let to = edge.apply(from: from, delta: Point(x: dx, y: dy), screen: screen, at: t)
-            guard to != from else { return }
-            if post(.moveCursor(to: to)) { environment.cursorMoved(to: to) }
+            move(by: Point(x: dx, y: dy), at: t) { .moveCursor(to: $0) }
+        case .click(let button, let count):
+            let at = environment.cursor
+            if post(.mouseDown(button: button, at: at, clickCount: count)) {
+                post(.mouseUp(button: button, at: at, clickCount: count))
+            }
+        case .dragBegan(let button):
+            dragging = button
+            post(.mouseDown(button: button, at: environment.cursor, clickCount: 1))
+        case .dragMoved(let dx, let dy):
+            let button = dragging ?? .left
+            move(by: Point(x: dx, y: dy), at: t) { .mouseDragged(button: button, to: $0) }
+        case .dragEnded(let button):
+            dragging = nil
+            post(.mouseUp(button: button, at: environment.cursor, clickCount: 1))
         }
+    }
+
+    private func move(by delta: Point, at t: Double, action: (Point) -> OutputAction) {
+        let from = environment.cursor
+        let screen = environment.screens.first { $0.contains(from) } ?? environment.screens.first
+        guard let screen else { return }
+        let to = edge.apply(from: from, delta: delta, screen: screen, at: t)
+        guard to != from else { return }
+        if post(action(to)) { environment.cursorMoved(to: to) }
     }
 
     @discardableResult
