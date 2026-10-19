@@ -21,7 +21,9 @@ if [[ -d "$APP" ]]; then mv "$APP" "$(mktemp -d)/"; fi
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp "$BIN_DIR/Handy" "$APP/Contents/MacOS/Handy"
 shopt -s nullglob
-for bundle in "$BIN_DIR"/*.bundle; do cp -R "$bundle" "$APP/Contents/Resources/"; done
+for bundle in "$BIN_DIR"/*.bundle; do
+  [[ "$bundle" == *Tests.bundle ]] || cp -R "$bundle" "$APP/Contents/Resources/"
+done
 for framework in "$BIN_DIR"/*.framework; do cp -R "$framework" "$APP/Contents/Frameworks/"; done
 shopt -u nullglob
 if ! otool -l "$APP/Contents/MacOS/Handy" | grep -q "@executable_path/../Frameworks"; then
@@ -54,6 +56,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+scripts/appintents-metadata.sh "$APP" "$CONF" >/dev/null
 
 xattr -cr "$APP"
 if [[ -n "$APP_IDENTITY" ]]; then

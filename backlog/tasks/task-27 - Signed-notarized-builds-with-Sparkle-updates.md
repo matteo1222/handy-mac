@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:39'
-updated_date: '2026-10-19 18:23'
+updated_date: '2026-10-19 18:30'
 labels:
   - ready-for-human
 milestone: m-2
@@ -48,4 +48,6 @@ External beta testers need a trusted build. Synthesising input rules out the App
 From TASK-21: run appintentsmetadataprocessor during packaging (needs -emit-const-values from the Swift compiler for HandyApp) so Shortcuts discovers PerformHandyActionIntent.
 
 Done and verified: Sparkle 2.10.0 embedded (otool shows @rpath/Sparkle.framework), codesign --verify --deep --strict passes on the ad-hoc bundle, the dev build has no feed keys so the updater never starts, and the running app holds 0 internet sockets (lsof). Launch at login is a Settings toggle backed by SMAppService, unregistered by default. Needs a human with the Apple Developer account: create the Developer ID certificate and a notarytool profile, generate Sparkle EdDSA keys (generate_keys), set the release workflow secrets, then tag v0.1.0 to prove AC1 and AC2 end to end. Still open from TASK-21: App Intents metadata extraction for Shortcuts discovery. Note: SwiftPM can hang on a keychain prompt when resolving the Sparkle binary; --disable-keychain avoids it (documented in AGENTS.md).
+
+App Intents metadata extraction is now part of package-app.sh (resolves the TASK-21 note).
 <!-- SECTION:NOTES:END -->

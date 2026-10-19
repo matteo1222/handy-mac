@@ -8,10 +8,28 @@ enum HandyActionEnum: String, AppEnum {
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Handy Action"
 
-    static let caseDisplayRepresentations: [HandyActionEnum: DisplayRepresentation] = Dictionary(
-        uniqueKeysWithValues: allCases.compactMap { item in
-            item.named.map { (item, DisplayRepresentation(title: "\($0.title)")) }
-        })
+    /// A literal, because Apple's App Intents metadata extractor reads it at build time. The projection
+    /// test checks each title against `NamedAction.title`.
+    static let caseDisplayRepresentations: [HandyActionEnum: DisplayRepresentation] = [
+        .newTab: "New Tab",
+        .closeTab: "Close Tab",
+        .switchApp: "Switch App",
+        .copy: "Copy",
+        .paste: "Paste",
+        .undo: "Undo",
+        .redo: "Redo",
+        .find: "Find",
+        .space: "Play/Pause",
+        .tab: "Tab",
+        .returnKey: "Return",
+        .escape: "Escape",
+        .missionControl: "Mission Control",
+        .previousSpace: "Previous Space",
+        .nextSpace: "Next Space",
+        .dictation: "Dictation",
+        .zoomIn: "Zoom In",
+        .zoomOut: "Zoom Out",
+    ]
 
     var named: NamedAction? { NamedAction(rawValue: rawValue) }
 }

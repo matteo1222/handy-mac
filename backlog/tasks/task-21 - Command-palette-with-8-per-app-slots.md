@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:39'
-updated_date: '2026-10-19 17:41'
+updated_date: '2026-10-19 18:30'
 labels:
   - ready-for-agent
 milestone: m-2
@@ -48,6 +48,8 @@ R9: the long tail of shortcuts without memorising 30 poses. Other-hand pinch-hol
 
 <!-- SECTION:NOTES:BEGIN -->
 Inject of gestures/palette records one ⌘T (slot 0, New Tab); handyctl perform missionControl --record records ⌃↑. Caveat on the App Intent projection: the intent and its enum compile and are tested for completeness, but Shortcuts discovers intents from metadata that Xcode's appintentsmetadataprocessor extracts at build time; the SwiftPM build does not run it yet (needs the compiler's const-values output). Tracked under TASK-27 packaging.
+
+Update: packaging now extracts App Intents metadata (scripts/appintents-metadata.sh: standalone HandyApp compile for const values, then appintentsmetadataprocessor); Handy.app/Contents/Resources/Metadata.appintents lists PerformHandyActionIntent and HandyActionEnum. Shortcuts listing it on a user's Mac (app installed in /Applications) is still to be seen.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
