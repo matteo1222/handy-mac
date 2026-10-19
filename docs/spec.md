@@ -42,9 +42,9 @@ Perception runs left to right on a background queue; only the gesture engine dec
 6. **Features.** Normalise every distance by hand scale (wrist → middle-finger MCP). Compute pinch distances (thumb tip to index / middle tip), per-finger curl (PIP angle), palm centroid (wrist + four MCPs), palm facing (MCP spread vs scale), and velocities.
 7. **Attention gate.** Face rectangle at 5 fps; engagement allowed only while face yaw is within ±30° (configurable for multi-display users).
 
-### Fork or greenfield
+### Greenfield, not a fork
 
-Pawvis already has this split (a pure `PawvisCore` plus an app target), a One Euro filter and a frame-timestamp gesture engine with tests. **Rule:** if Pawvis's core, replayed on our recorded clips, lands within 2× of our accuracy and latency targets, fork it (MIT, keep the notice) and spend the effort on UX. Otherwise go greenfield and borrow its algorithms.
+**Decision (Oct 19, 2026):** Handy is built from scratch on the principles in this spec; we do not fork or bake off Pawvis. Pawvis remains prior art in [research](research.md) (one-euro filter, frame-timestamp engine, index-dip click), but no code is taken from it.
 
 ## Spec — gesture engine
 

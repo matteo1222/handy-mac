@@ -23,4 +23,4 @@ Camera hand-gesture control for macOS: drive the trackpad and keyboard with your
 
 ## Status
 
-Planning. Next step: Week 0 Pawvis bake-off, then scaffold the Swift packages, the fence and `handyctl` (see [spec](docs/spec.md)).
+Planning. Decided to build greenfield (no Pawvis fork). Next step: scaffold the Swift packages, the fence and `handyctl` (see [spec](docs/spec.md)).

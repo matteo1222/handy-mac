@@ -131,8 +131,7 @@ People want to control a Mac without touching it: from the couch, while cooking,
 
 ### Release plan
 
-1. **Week 0 — Pawvis bake-off (2 days).** Use Pawvis daily; log every misfire and annoyance. Decide fork vs greenfield (see Spec).
-2. **Weeks 1–3 — Perception spike.** Vision backend vs fasthands/Core ML backend on the same recorded clips: latency, jitter, landmark accuracy in dim light. Exit: one backend meets 30 fps at < 10 ms inference.
-3. **Weeks 4–7 — Alpha (P0).** Gesture engine, clutch, HUD, onboarding. Exit: < 3 accidental actions/hour on 5 internal users.
-4. **Weeks 8–11 — Beta (P1).** Palette, keys, dictation, presets, undo-as-training. Exit: < 1 accidental action/hour, Fitts' throughput ≥ 2 bits/s, 20 external testers.
-5. **Week 12+ — 1.0.** Public release, then P2 by demand.
+1. **Weeks 1–3 — Walking skeleton + perception spike.** Greenfield (no Pawvis fork; see Spec). Scaffold packages, fence and `handyctl`, then compare Vision backend vs fasthands/Core ML backend on the same recorded clips: latency, jitter, landmark accuracy in dim light. Exit: one backend meets 30 fps at < 10 ms inference.
+2. **Weeks 4–7 — Alpha (P0).** Gesture engine, clutch, HUD, onboarding. Exit: < 3 accidental actions/hour on 5 internal users.
+3. **Weeks 8–11 — Beta (P1).** Palette, keys, dictation, presets, undo-as-training. Exit: < 1 accidental action/hour, Fitts' throughput ≥ 2 bits/s, 20 external testers.
+4. **Week 12+ — 1.0.** Public release, then P2 by demand.
