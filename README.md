@@ -23,13 +23,15 @@ Camera hand-gesture control for macOS: drive the trackpad and keyboard with your
 
 ## Status
 
-Walking skeleton. SwiftPM only (no Xcode project).
+Alpha and beta features are built and proven on replayed landmark clips; see the Backlog for
+what still needs people (recorded corpus, alpha and beta users) and an Apple Developer account
+(signed, notarized releases). SwiftPM only (no Xcode project).
 
 ```bash
-make verify            # format, lint, debt ledger, build, tests, fence proof, app bundle
+make verify            # format, lint, debt ledger, build, tests, fixtures, false-action bench, fence, app bundle
 scripts/run-app.sh     # package and launch the menu-bar app
 .build/debug/handyctl doctor
 .build/debug/handyctl state
 ```
 
-Stop Handy from anywhere with ⌃⌥⌘H. Every lint suppression is listed in [DEBT.md](DEBT.md).
+Stop Handy from anywhere with ⌃⌥⌘H; ⌃⌥⌘/ shows every gesture. Agents: start with [AGENTS.md](AGENTS.md).
