@@ -10,6 +10,7 @@ public struct Engine: Sendable {
     private var hardStop: HardStop
     private var oneShot: OneShotRecognizer
     private var flicks: FlickRecognizer
+    private var swipes: SwipeRecognizer
     private let classifier: PoseClassifier
 
     public init(
@@ -22,6 +23,7 @@ public struct Engine: Sendable {
         hardStop = HardStop(settings: settings.hardStop)
         oneShot = OneShotRecognizer(settings: settings.oneShot)
         flicks = FlickRecognizer(settings: settings.flick)
+        swipes = SwipeRecognizer(settings: settings.swipe)
     }
 
     public var mode: Mode { state.mode }
@@ -83,7 +85,11 @@ public struct Engine: Sendable {
             flicks.reset()
             return []
         }
-        if let hand = pointerHand(in: frame), isOpenPalm(hand) {
+        let palm = pointerHand(in: frame).flatMap { isOpenPalm($0) ? $0 : nil }
+        if let direction = swipes.update(openPalm: palm, aspect: settings.frameAspect, at: frame.t) {
+            return [.swipe(direction)]
+        }
+        if let hand = palm, !swipes.isQuiet(at: frame.t) {
             oneShot.reset()
             flicks.reset()
             return transition(to: .arming(Arming(hand: hand.id, since: frame.t, lastSeen: frame.t)))
@@ -104,7 +110,13 @@ public struct Engine: Sendable {
             return t - arming.lastSeen >= settings.handLostGrace ? transition(to: .watching) : []
         }
         arming.lastSeen = t
-        if isOpenPalm(hand) {
+        let open = isOpenPalm(hand)
+        if let direction = swipes.update(openPalm: open ? hand : nil, aspect: settings.frameAspect, at: t) {
+            return transition(to: .watching) + [.swipe(direction)]
+        }
+        // Engaging means holding the palm up; a hand moving fast is mid-swipe or passing by.
+        if hand.velocity.length > settings.armMaxSpeed { arming.since = t }
+        if open {
             arming.notOpenSince = nil
         } else {
             let since = arming.notOpenSince ?? t
@@ -167,9 +179,10 @@ public struct Engine: Sendable {
                 palm: hand.palmCentroid * settings.pointer.slowGain, at: t, reach: hand.reach)
     }
 
-    /// Index and middle up, ring and little curled.
+    /// Clearly index and middle up, ring and little curled. The margins keep a relaxed hand, whose
+    /// fingers curl a little more from index to little, from reading as the scroll pose.
     func isScrollPose(_ hand: HandFeatures) -> Bool {
-        hand.isExtended(.index) && hand.isExtended(.middle) && !hand.isExtended(.ring) && !hand.isExtended(.little)
+        hand.reach.index > 0.6 && hand.reach.middle > 0.6 && hand.reach.ring < 0.2 && hand.reach.little < 0.2
     }
 
     private func pointerHand(in frame: FrameFeatures) -> HandFeatures? {
@@ -195,6 +208,7 @@ public struct Engine: Sendable {
             oneShot.reset()
             flicks.reset()
         }
+        if next != .watching, next.mode != .arming { swipes.reset() }
         if next == .watching, [.engaged, .dragging, .scrolling].contains(previous) { oneShot.blockUntilRelease() }
         if next == .off {
             attention = AttentionGate(settings: settings.attention)
@@ -286,6 +300,8 @@ extension Engine {
         case oneShot(PoseClass)
         /// An index-finger flick while not engaged.
         case flick(Direction)
+        /// An open-palm swipe while not engaged.
+        case swipe(Direction)
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -326,6 +342,11 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var hardStop = HardStopSettings()
     public var oneShot = OneShotSettings()
     public var flick = FlickSettings()
+    public var swipe = SwipeSettings()
+    /// The open palm counts as held only below this palm speed, in frame heights per second.
+    public var armMaxSpeed = 0.6
+    /// Camera frame width over height; set from the live camera.
+    public var frameAspect = 16.0 / 9
 
     public init() {}
 }

@@ -7,18 +7,16 @@ import HandyCore
 public enum KeyboardLayout {
     public static func keyCode(for key: Key) -> CGKeyCode? {
         switch key {
-        case .returnKey: CGKeyCode(kVK_Return)
-        case .escape: CGKeyCode(kVK_Escape)
-        case .tab: CGKeyCode(kVK_Tab)
-        case .space: CGKeyCode(kVK_Space)
-        case .delete: CGKeyCode(kVK_Delete)
-        case .up: CGKeyCode(kVK_UpArrow)
-        case .down: CGKeyCode(kVK_DownArrow)
-        case .left: CGKeyCode(kVK_LeftArrow)
-        case .right: CGKeyCode(kVK_RightArrow)
         case .character(let character): currentLayoutTable()[character.lowercased()]
+        case .code(let code): CGKeyCode(exactly: code)
+        default: namedKeys[key].map(CGKeyCode.init)
         }
     }
+
+    static let namedKeys: [Key: Int] = [
+        .returnKey: kVK_Return, .escape: kVK_Escape, .tab: kVK_Tab, .space: kVK_Space, .delete: kVK_Delete,
+        .up: kVK_UpArrow, .down: kVK_DownArrow, .left: kVK_LeftArrow, .right: kVK_RightArrow,
+    ]
 
     /// Character → key code for every key in the current layout, without modifiers.
     static func currentLayoutTable() -> [String: CGKeyCode] {

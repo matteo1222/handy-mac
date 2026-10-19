@@ -1,0 +1,26 @@
+[
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "arming"
+      }
+    },
+    "t" : 0.366667
+  },
+  {
+    "event" : {
+      "modeChanged" : {
+        "to" : "watching"
+      }
+    },
+    "t" : 0.633333
+  },
+  {
+    "event" : {
+      "swipe" : {
+        "_0" : "left"
+      }
+    },
+    "t" : 0.633333
+  }
+]

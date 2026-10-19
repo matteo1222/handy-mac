@@ -93,11 +93,16 @@ public struct HandTracker: Sendable {
         return gated
     }
 
+    /// The most recently seen track within reach, nearest first among equals. A track still being
+    /// followed frame to frame wins over a stale one held through a dropout, even if the stale one
+    /// is a little closer, so a fast-moving hand cannot be handed to an old identity.
     private func nearest(to wrist: Point, in candidates: [State]) -> Int? {
-        let ranked = candidates.indices
-            .map { (index: $0, distance: candidates[$0].wrist.distance(to: wrist)) }
-            .filter { $0.distance <= settings.maxWristJump }
-            .min { $0.distance < $1.distance }
-        return ranked?.index
+        candidates.indices
+            .filter { candidates[$0].wrist.distance(to: wrist) <= settings.maxWristJump }
+            .min { a, b in
+                let (left, right) = (candidates[a], candidates[b])
+                if left.lastSeen != right.lastSeen { return left.lastSeen > right.lastSeen }
+                return left.wrist.distance(to: wrist) < right.wrist.distance(to: wrist)
+            }
     }
 }

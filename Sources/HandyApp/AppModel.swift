@@ -46,7 +46,11 @@ public final class AppModel {
         if let calibration = CalibrationStore.load() { applyCalibration(calibration) }
     }
 
-    // MARK: Onboarding
+}
+
+// MARK: Onboarding
+
+extension AppModel {
 
     private static let onboardedKey = "onboarded"
 
@@ -95,6 +99,9 @@ public final class AppModel {
     }
 
     var needsOnboarding: Bool { !UserDefaults.standard.bool(forKey: Self.onboardedKey) }
+}
+
+extension AppModel {
 
     private static let cameraKey = "cameraID"
 
@@ -144,6 +151,11 @@ public final class AppModel {
 
     private func process(_ frame: LandmarkFrame) {
         lastFrameTime = frame.t
+        if !injecting, abs(session.engine.settings.frameAspect - tracking.lastAspect) > 0.01 {
+            var settings = session.engine.settings
+            settings.frameAspect = tracking.lastAspect
+            session.configure(settings)
+        }
         apply(session.process(frame))
         tracking.publishDebug(session.lastFeatures, for: frame)
         if let onboarding, let features = session.lastFeatures {
@@ -223,7 +235,11 @@ public final class AppModel {
         }
     }
 
-    // MARK: handyctl
+}
+
+// MARK: handyctl
+
+extension AppModel {
 
     var snapshot: AppStateSnapshot {
         AppStateSnapshot(
@@ -353,7 +369,7 @@ extension Engine.Event {
         case .click(.right, _): "Right click"
         case .dragBegan: "Drag"
         case .dragEnded: "Drop"
-        case .scroll, .oneShot, .flick: nil
+        case .scroll, .oneShot, .flick, .swipe: nil
         }
     }
 }

@@ -11,6 +11,8 @@ public enum Key: Sendable, Hashable, Codable {
     case left
     case right
     case character(String)
+    /// A raw virtual key code, for shortcuts read from system settings.
+    case code(Int)
 }
 
 public enum Modifier: String, Sendable, Hashable, Codable, CaseIterable, Comparable {
@@ -56,6 +58,7 @@ public struct KeyChord: Sendable, Hashable, Codable, CustomStringConvertible {
             case .left: "←"
             case .right: "→"
             case .character(let character): character.uppercased()
+            case .code(let code): "key \(code)"
             }
         return modifiers.sorted().map(\.symbol).joined() + keyName
     }
@@ -65,12 +68,19 @@ public struct KeyChord: Sendable, Hashable, Codable, CustomStringConvertible {
 /// bindings, the menu bar and handyctl.
 public enum Action: Sendable, Hashable, Codable {
     case key(KeyChord)
+    /// Spaces and Mission Control, sent with the user's own system shortcuts.
+    case previousSpace
+    case nextSpace
+    case missionControl
 }
 
 extension Action: CustomStringConvertible {
     public var description: String {
         switch self {
         case .key(let chord): chord.description
+        case .previousSpace: "Previous Space"
+        case .nextSpace: "Next Space"
+        case .missionControl: "Mission Control"
         }
     }
 }
@@ -79,10 +89,12 @@ extension Action: CustomStringConvertible {
 public struct Bindings: Sendable, Hashable, Codable {
     public var oneShots: [PoseClass: Action]
     public var flicks: [Direction: Action]
+    public var swipes: [Direction: Action]
 
-    public init(oneShots: [PoseClass: Action], flicks: [Direction: Action]) {
+    public init(oneShots: [PoseClass: Action], flicks: [Direction: Action], swipes: [Direction: Action]) {
         self.oneShots = oneShots
         self.flicks = flicks
+        self.swipes = swipes
     }
 
     public static let defaults = Bindings(
@@ -95,5 +107,10 @@ public struct Bindings: Sendable, Hashable, Codable {
             .down: .key(KeyChord(.down)),
             .left: .key(KeyChord(.left)),
             .right: .key(KeyChord(.right)),
+        ],
+        swipes: [
+            .left: .previousSpace,
+            .right: .nextSpace,
+            .up: .missionControl,
         ])
 }

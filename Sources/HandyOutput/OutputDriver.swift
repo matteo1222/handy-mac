@@ -94,7 +94,7 @@ public final class OutputDriver {
             post(.mouseUp(button: button, at: environment.cursor, clickCount: 1))
         case .scroll(let dx, let dy, let phase):
             scroll(dx: dx, dy: dy, phase: phase)
-        case .oneShot, .flick:
+        case .oneShot, .flick, .swipe:
             break  // Gestures become actions through the ActionRouter, then `perform`.
         }
     }
@@ -102,6 +102,8 @@ public final class OutputDriver {
     public func perform(_ action: Action) {
         switch action {
         case .key(let chord): post(.keyStroke(chord))
+        case .previousSpace, .nextSpace, .missionControl:
+            if let chord = SymbolicHotKeys.chord(for: action) { post(.keyStroke(chord)) }
         }
     }
 

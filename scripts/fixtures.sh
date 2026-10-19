@@ -94,4 +94,12 @@ fixture scenarios/smallFlickDoesNotFire --script "relaxed:300ms point:400ms poin
 fixture scenarios/movingAPointingHandIsNotAFlick --script "relaxed:300ms point:400ms point:150ms->1.05,0.75 point:150ms->0.9,0.6 point:400ms" --noise 1px --seed 44
 fixture scenarios/flickWhileEngagedDoesNothing --script "openPalm:700ms point:400ms point:150ms/-35 point:400ms/-35" --noise 1px --seed 45
 
+# Spaces swipes and Mission Control (TASK-22)
+fixture gestures/swipeLeft --script "relaxed:300ms openPalm:100ms@1.2,0.75 openPalm:300ms->0.6,0.75 relaxed:400ms" --noise 1px --seed 46
+fixture gestures/swipeRight --script "relaxed:300ms openPalm:100ms@0.6,0.75 openPalm:300ms->1.2,0.75 relaxed:400ms" --noise 1px --seed 47
+fixture gestures/swipeUp --script "relaxed:300ms openPalm:100ms@0.9,0.92 openPalm:300ms->0.9,0.55 relaxed:400ms" --noise 1px --seed 48
+fixture scenarios/shortSwipeDoesNotFire --script "relaxed:300ms openPalm:100ms@0.8,0.75 openPalm:300ms->1.0,0.75 relaxed:400ms" --noise 1px --seed 49
+fixture scenarios/slowPalmMoveIsNotASwipe --script "relaxed:300ms openPalm:100ms@0.6,0.75 openPalm:1500ms->1.2,0.75 relaxed:400ms" --noise 1px --seed 50
+fixture scenarios/swipeWhileEngagedMovesTheCursor --script "openPalm:700ms@0.6,0.75 openPalm:300ms->1.2,0.75 openPalm:300ms" --noise 1px --seed 51
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

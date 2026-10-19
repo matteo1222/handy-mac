@@ -3,12 +3,11 @@
     "synthetic no-gesture, 2.0 h"
   ],
   "falseActions" : {
-    "drag" : 1,
-    "engage" : 3,
+    "engage" : 1,
     "flick.down" : 1,
     "flick.up" : 1
   },
-  "falseActionsPerHour" : 2.98,
+  "falseActionsPerHour" : 1.49,
   "gestureRecall" : {
 
   },
@@ -17,9 +16,9 @@
   "noGestureHours" : 2.013,
   "processingMicroseconds" : {
     "count" : 217444,
-    "max" : 187.9,
-    "mean" : 3.5,
-    "p50" : 2.9,
-    "p95" : 6.4
+    "max" : 1941.8,
+    "mean" : 3.6,
+    "p50" : 3,
+    "p95" : 6.5
   }
 }

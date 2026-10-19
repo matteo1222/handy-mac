@@ -29,4 +29,8 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case flickDown
     case flickLeft
     case flickRight
+    /// Open-palm swipes while not engaged: previous and next Space, Mission Control.
+    case swipeLeft
+    case swipeRight
+    case swipeUp
 }
