@@ -85,6 +85,7 @@ public struct ActionRouter: Sendable {
     public func actions(for event: Engine.Event) -> [Action] {
         switch event {
         case .oneShot(let pose): bindings.oneShots[pose].map { [$0] } ?? []
+        case .flick(let direction): bindings.flicks[direction].map { [$0] } ?? []
         default: []
         }
     }

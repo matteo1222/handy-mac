@@ -93,3 +93,14 @@ private struct Driver {
     #expect(abs(half - 0.5) < 1e-9)
     #expect(clicks.closeness(pinchIndex: nil, pinchMiddle: nil) == nil)
 }
+
+@Test func thumbOnACurledFingerIsNotAPinch() {
+    var clicks = ClickRecognizer(settings: ClickSettings())
+    let curledMiddle = FingerValues(thumb: 0.3, index: 0.9, middle: -0.3, ring: -0.3, little: -0.3)
+    for frame in 1...10 {
+        let events = clicks.update(
+            pinchIndex: 1.3, pinchMiddle: 0.1, delta: nil, palm: .zero, at: Double(frame) / 30, reach: curledMiddle)
+        #expect(events.isEmpty)
+    }
+    #expect(clicks.phase == .idle)
+}

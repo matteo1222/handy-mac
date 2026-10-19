@@ -78,13 +78,22 @@ extension Action: CustomStringConvertible {
 /// Which action each one-shot gesture fires.
 public struct Bindings: Sendable, Hashable, Codable {
     public var oneShots: [PoseClass: Action]
+    public var flicks: [Direction: Action]
 
-    public init(oneShots: [PoseClass: Action]) {
+    public init(oneShots: [PoseClass: Action], flicks: [Direction: Action]) {
         self.oneShots = oneShots
+        self.flicks = flicks
     }
 
-    public static let defaults = Bindings(oneShots: [
-        .thumbsUp: .key(KeyChord(.returnKey)),
-        .thumbsDown: .key(KeyChord(.escape)),
-    ])
+    public static let defaults = Bindings(
+        oneShots: [
+            .thumbsUp: .key(KeyChord(.returnKey)),
+            .thumbsDown: .key(KeyChord(.escape)),
+        ],
+        flicks: [
+            .up: .key(KeyChord(.up)),
+            .down: .key(KeyChord(.down)),
+            .left: .key(KeyChord(.left)),
+            .right: .key(KeyChord(.right)),
+        ])
 }

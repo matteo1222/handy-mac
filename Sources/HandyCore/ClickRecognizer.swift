@@ -17,6 +17,9 @@ public struct ClickSettings: Sendable, Hashable, Codable {
     /// A second press within this long after a click, and within `doubleClickDistance`, counts up.
     public var doubleClickInterval = 0.35
     public var doubleClickDistance = 12.0
+    /// A pinch only starts when its finger reaches out at least this far (`HandFeatures.reach`).
+    /// A thumb resting on a finger curled into the palm is not a pinch.
+    public var minFingerReach = 0.25
 
     public init() {}
 }
@@ -70,12 +73,15 @@ public struct ClickRecognizer: Sendable, Equatable {
     /// position in points: click-versus-drag is judged on real hand travel, not on filter lag
     /// catching up after the hand stops to aim.
     public mutating func update(
-        pinchIndex: Double?, pinchMiddle: Double?, delta: Point?, palm: Point, at t: Double
+        pinchIndex: Double?, pinchMiddle: Double?, delta: Point?, palm: Point, at t: Double,
+        reach: FingerValues? = nil
     ) -> [Engine.Event] {
         let motion = delta ?? .zero
         switch phase {
         case .idle:
-            if let button = pressedButton(pinchIndex: pinchIndex, pinchMiddle: pinchMiddle) {
+            let index = reach.map { $0.index >= settings.minFingerReach } ?? true ? pinchIndex : nil
+            let middle = reach.map { $0.middle >= settings.minFingerReach } ?? true ? pinchMiddle : nil
+            if let button = pressedButton(pinchIndex: index, pinchMiddle: middle) {
                 phase = .pressing(
                     Press(button: button, since: t, origin: palm, motion: .zero, count: nextCount(for: button, at: t)))
                 return []

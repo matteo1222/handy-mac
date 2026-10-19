@@ -84,4 +84,14 @@ fixture scenarios/briefThumbsUpDoesNotFire --script "relaxed:400ms thumbsUp:350m
 fixture scenarios/heldThumbsUpFiresOnce --script "relaxed:400ms thumbsUp:2500ms relaxed:400ms" --noise 1px --seed 36
 fixture scenarios/thumbsUpWhileEngagedDoesNothing --script "openPalm:700ms thumbsUp:1000ms" --noise 1px --seed 37
 
+# Flicks (TASK-13)
+fixture gestures/flickRight --script "relaxed:300ms point:400ms point:150ms->1.05,0.75 point:400ms" --noise 1px --seed 38
+fixture gestures/flickLeft --script "relaxed:300ms point:400ms point:150ms->0.75,0.75 point:400ms" --noise 1px --seed 39
+fixture gestures/flickUp --script "relaxed:300ms point:400ms point:150ms->0.9,0.6 point:400ms" --noise 1px --seed 40
+fixture gestures/flickDown --script "relaxed:300ms point:400ms point:150ms->0.9,0.9 point:400ms" --noise 1px --seed 41
+fixture scenarios/slowPointingIsNotAFlick --script "relaxed:300ms point:400ms point:1200ms->1.05,0.75 point:400ms" --noise 1px --seed 42
+fixture scenarios/smallFlickDoesNotFire --script "relaxed:300ms point:400ms point:150ms->0.94,0.75 point:400ms" --noise 1px --seed 43
+fixture scenarios/diagonalFlickDoesNotFire --script "relaxed:300ms point:400ms point:150ms->1.0,0.65 point:400ms" --noise 1px --seed 44
+fixture scenarios/flickWhileEngagedDoesNothing --script "openPalm:700ms point:400ms point:150ms->1.05,0.75 point:400ms" --noise 1px --seed 45
+
 if [[ "$MODE" == check ]]; then echo "fixtures match their recipes"; fi

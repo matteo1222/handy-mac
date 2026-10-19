@@ -9,6 +9,7 @@ public struct Engine: Sendable {
     private var attention: AttentionGate
     private var hardStop: HardStop
     private var oneShot: OneShotRecognizer
+    private var flicks: FlickRecognizer
     private let classifier: PoseClassifier
 
     public init(
@@ -20,6 +21,7 @@ public struct Engine: Sendable {
         attention = AttentionGate(settings: settings.attention)
         hardStop = HardStop(settings: settings.hardStop)
         oneShot = OneShotRecognizer(settings: settings.oneShot)
+        flicks = FlickRecognizer(settings: settings.flick)
     }
 
     public var mode: Mode { state.mode }
@@ -78,13 +80,19 @@ public struct Engine: Sendable {
     private mutating func watching(_ frame: FrameFeatures) -> [Event] {
         guard attention.allowsEngaging(at: frame.t) else {
             oneShot.reset()
+            flicks.reset()
             return []
         }
         if let hand = pointerHand(in: frame), isOpenPalm(hand) {
             oneShot.reset()
+            flicks.reset()
             return transition(to: .arming(Arming(hand: hand.id, since: frame.t, lastSeen: frame.t)))
         }
-        // One-shots run only while not engaged, so a pointing hand never fires a shortcut.
+        // One-shots and flicks run only while not engaged, so a pointing hand never fires a shortcut.
+        if let direction = flicks.update(pointerHand(in: frame), at: frame.t) {
+            oneShot.reset()
+            return [.flick(direction)]
+        }
         let reading = (pointerHand(in: frame) ?? frame.hands.first).flatMap(classifier.read)
         return oneShot.update(reading, at: frame.t).map { [.oneShot($0)] } ?? []
     }
@@ -156,7 +164,7 @@ public struct Engine: Sendable {
         return events
             + engaged.clicks.update(
                 pinchIndex: hand.pinchIndex, pinchMiddle: hand.pinchMiddle, delta: step.cursor,
-                palm: hand.palmCentroid * settings.pointer.slowGain, at: t)
+                palm: hand.palmCentroid * settings.pointer.slowGain, at: t, reach: hand.reach)
     }
 
     /// Index and middle up, ring and little curled.
@@ -181,7 +189,10 @@ public struct Engine: Sendable {
 
     private mutating func transition(to next: State) -> [Event] {
         let previous = mode
-        if next != .watching { oneShot.reset() }
+        if next != .watching {
+            oneShot.reset()
+            flicks.reset()
+        }
         if next == .watching, [.engaged, .dragging, .scrolling].contains(previous) { oneShot.blockUntilRelease() }
         if next == .off {
             attention = AttentionGate(settings: settings.attention)
@@ -271,6 +282,8 @@ extension Engine {
         case scroll(dx: Double, dy: Double, phase: ScrollPhase)
         /// A static pose held to completion while not engaged.
         case oneShot(PoseClass)
+        /// An index-finger flick while not engaged.
+        case flick(Direction)
     }
 
     public struct Status: Sendable, Equatable, Codable {
@@ -310,6 +323,7 @@ public struct EngineSettings: Sendable, Hashable, Codable {
     public var attention = AttentionSettings()
     public var hardStop = HardStopSettings()
     public var oneShot = OneShotSettings()
+    public var flick = FlickSettings()
 
     public init() {}
 }

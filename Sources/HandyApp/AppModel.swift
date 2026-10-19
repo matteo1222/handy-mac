@@ -217,7 +217,7 @@ extension Engine.Event {
         case .click(.right, _): "Right click"
         case .dragBegan: "Drag"
         case .dragEnded: "Drop"
-        case .scroll, .oneShot: nil
+        case .scroll, .oneShot, .flick: nil
         }
     }
 }

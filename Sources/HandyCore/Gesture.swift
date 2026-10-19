@@ -24,4 +24,9 @@ public enum Gesture: String, Sendable, CaseIterable, Codable {
     case thumbsUp
     /// Thumbs down held 500 ms while not engaged: Esc.
     case thumbsDown
+    /// Index-finger flicks while not engaged: arrow keys.
+    case flickUp
+    case flickDown
+    case flickLeft
+    case flickRight
 }
