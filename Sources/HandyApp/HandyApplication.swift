@@ -12,8 +12,9 @@ public struct HandyApplication: App {
         MenuBarExtra {
             MenuBarContent(model: delegate.model)
         } label: {
-            Image(systemName: delegate.model.mode.menuBarSymbol)
-                .accessibilityLabel("Handy, \(delegate.model.mode.title)")
+            let symbol = MenuBarSymbol(mode: delegate.model.mode, cameraLive: delegate.model.tracking.camera.isLive)
+            Image(systemName: symbol.name)
+                .accessibilityLabel(symbol.accessibilityLabel)
         }
         .menuBarExtraStyle(.menu)
 
@@ -21,6 +22,10 @@ public struct HandyApplication: App {
             DebugOverlayView(tracking: delegate.model.tracking)
         }
         .windowResizability(.contentMinSize)
+
+        Settings {
+            SettingsView(model: delegate.model)
+        }
     }
 }
 
@@ -40,12 +45,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct MenuBarContent: View {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Text("Handy is \(model.mode.title)")
+        if let problem = model.problem {
+            Text(problem.message)
+            if let fix = problem.fix {
+                Button(fix.title) { model.apply(fix) }
+            }
+        }
         Button(model.mode == .off ? "Start Watching" : "Stop") { model.send(.toggle) }
         Text("Stop from anywhere: \(GlobalHotKey.stopDisplay)")
         Divider()
+        Button("Settings…") {
+            NSApplication.shared.activate()
+            openSettings()
+        }
+        .keyboardShortcut(",")
         Button("Show Debug Overlay") {
             NSApplication.shared.activate()
             openWindow(id: WindowID.debugOverlay)
@@ -59,6 +76,25 @@ struct MenuBarContent: View {
     }
 }
 
+/// The menu-bar icon: a distinct, filled-circle hand whenever the camera is live.
+struct MenuBarSymbol: Equatable {
+    let mode: Engine.Mode
+    let cameraLive: Bool
+
+    var name: String {
+        switch (mode, cameraLive) {
+        case (.off, _): "hand.raised.slash"
+        case (.engaged, true), (.dragging, true), (.scrolling, true): "hand.raised.circle.fill"
+        case (_, true): "hand.raised.circle"
+        case (_, false): "hand.raised"
+        }
+    }
+
+    var accessibilityLabel: String {
+        cameraLive ? "Handy, \(mode.title), camera on" : "Handy, \(mode.title)"
+    }
+}
+
 extension Engine.Mode {
     var title: String {
         switch self {
@@ -68,14 +104,6 @@ extension Engine.Mode {
         case .engaged: "Engaged"
         case .dragging: "Dragging"
         case .scrolling: "Scrolling"
-        }
-    }
-
-    var menuBarSymbol: String {
-        switch self {
-        case .off: "hand.raised.slash"
-        case .watching, .arming: "hand.raised"
-        case .engaged, .dragging, .scrolling: "hand.raised.fill"
         }
     }
 }

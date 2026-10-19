@@ -59,6 +59,7 @@ let package = Package(
             name: "HandyPerceptionTests", dependencies: ["HandyPerception", "HandyCore", "HandyReplay"],
             swiftSettings: strict),
         .testTarget(name: "HandyOutputTests", dependencies: ["HandyOutput", "HandyCore"], swiftSettings: strict),
+        .testTarget(name: "HandyAppTests", dependencies: ["HandyApp", "HandyCore"], swiftSettings: strict),
         .testTarget(name: "HandyControlTests", dependencies: ["HandyControl", "HandyCore"], swiftSettings: strict),
         .testTarget(name: "FenceCheckTests", dependencies: ["FenceCheck"], swiftSettings: strict),
     ]

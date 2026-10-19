@@ -1,16 +1,19 @@
 import AppKit
 import SwiftUI
 
-/// A borderless, click-through, non-activating panel at the top centre of the active screen.
-/// `sharingType = .none` keeps it out of screenshots, screen recordings and screen shares.
+/// A borderless, non-activating panel at the top centre of the active screen. It lets clicks
+/// through except while it offers a one-click fix. `sharingType = .none` keeps it out of
+/// screenshots, screen recordings and screen shares.
 @MainActor
 final class HUDPanel {
     private let panel: NSPanel
     private let host: NSHostingView<HUDView>
+    private let onFix: (Problem.Fix) -> Void
 
     static let title = "Handy HUD"
 
-    init(state: HUDState) {
+    init(state: HUDState, onFix: @escaping (Problem.Fix) -> Void) {
+        self.onFix = onFix
         host = NSHostingView(rootView: HUDView(state: state))
         panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: host.fittingSize),
@@ -32,7 +35,9 @@ final class HUDPanel {
     var windowNumber: Int { panel.windowNumber }
 
     func show(_ state: HUDState) {
-        host.rootView = HUDView(state: state)
+        let onFix = onFix
+        host.rootView = HUDView(state: state, onFix: state.fix.map { fix in { onFix(fix) } })
+        panel.ignoresMouseEvents = state.fix == nil
         let size = host.fittingSize
         guard let screen = NSScreen.main else { return }
         let frame = screen.visibleFrame

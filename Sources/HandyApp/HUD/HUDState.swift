@@ -15,14 +15,28 @@ struct HUDState: Equatable {
     /// 0...1 progress ring around the symbol (arming, one-shot hold), or nil.
     var progress: Double?
     var tone: Tone
+    /// A one-click fix for a problem; only then does the pill accept clicks.
+    var fix: Problem.Fix?
+
+    init(
+        symbol: String, title: String, detail: String?, progress: Double?, tone: Tone, fix: Problem.Fix? = nil
+    ) {
+        self.symbol = symbol
+        self.title = title
+        self.detail = detail
+        self.progress = progress
+        self.tone = tone
+        self.fix = fix
+    }
 
     /// `binding` names what the pose in progress will do, e.g. "Return".
     static func make(
-        status: Engine.Status, lastAction: String?, problem: String?, binding: String? = nil
+        status: Engine.Status, lastAction: String?, problem: Problem?, binding: String? = nil
     ) -> HUDState {
         if let problem {
             return HUDState(
-                symbol: "exclamationmark.triangle.fill", title: problem, detail: nil, progress: nil, tone: .warning)
+                symbol: problem == .tooDark ? "moon.fill" : "exclamationmark.triangle.fill", title: problem.message,
+                detail: nil, progress: nil, tone: .warning, fix: problem.fix)
         }
         let detail = lastAction
         switch status.mode {

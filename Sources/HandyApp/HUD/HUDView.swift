@@ -3,6 +3,7 @@ import SwiftUI
 /// The ambient pill: state, a progress ring while a hold is under way, and the last action.
 struct HUDView: View {
     let state: HUDState
+    var onFix: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -32,13 +33,18 @@ struct HUDView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            if let fix = state.fix {
+                Button(fix.title) { onFix?() }
+                    .modifier(FixButtonStyle())
+                    .controlSize(.small)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .modifier(PillBackground())
         .fixedSize()
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: state)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: state.fix == nil ? .combine : .contain)
         .accessibilityLabel(accessibilityText)
     }
 
@@ -58,6 +64,18 @@ struct HUDView: View {
 extension EnvironmentValues {
     /// Offscreen snapshots cannot composite glass or vibrancy, so they draw a solid pill instead.
     @Entry var drawsSolidPill = false
+}
+
+private struct FixButtonStyle: ViewModifier {
+    @Environment(\.drawsSolidPill) private var drawsSolidPill
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *), !drawsSolidPill {
+            content.buttonStyle(.glassProminent)
+        } else {
+            content.buttonStyle(.borderedProminent)
+        }
+    }
 }
 
 /// Liquid Glass on macOS 26, a material capsule before it.
@@ -80,7 +98,7 @@ private struct PillBackground: ViewModifier {
         HUDView(state: .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: nil))
         HUDView(state: .make(status: .init(mode: .arming, progress: 0.6), lastAction: nil, problem: nil))
         HUDView(state: .make(status: .init(mode: .engaged, progress: nil), lastAction: "Left click", problem: nil))
-        HUDView(state: .make(status: .init(mode: .off, progress: nil), lastAction: nil, problem: "Camera in use"))
+        HUDView(state: .make(status: .init(mode: .off, progress: nil), lastAction: nil, problem: .cameraInUse))
     }
     .padding()
 }

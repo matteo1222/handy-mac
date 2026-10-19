@@ -17,7 +17,7 @@ enum Screenshots {
         }
     }
 
-    nonisolated static let targets = ["hud", "hud-gallery", "cursor-ring"]
+    nonisolated static let targets = ["hud", "hud-gallery", "cursor-ring", "settings"]
 
     static func render(_ target: String, model: AppModel, to url: URL) throws {
         let view: AnyView
@@ -26,6 +26,8 @@ enum Screenshots {
             view = AnyView(HUDView(state: model.currentHUD).padding(12))
         case "hud-gallery":
             view = AnyView(HUDGallery().padding(12))
+        case "settings":
+            view = AnyView(SettingsView(model: model))
         case "cursor-ring":
             view = AnyView(
                 HStack {
@@ -69,6 +71,9 @@ struct HUDGallery: View {
             status: .init(mode: .watching, progress: 0.6, oneShot: .thumbsUp), lastAction: nil, problem: nil,
             binding: "Return"),
         .make(status: .init(mode: .watching, progress: nil), lastAction: "Return", problem: nil),
-        .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: "Camera in use by another app"),
+        .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .cameraInUse),
+        .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .cameraDisconnected),
+        .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .tooDark),
+        .make(status: .init(mode: .watching, progress: nil), lastAction: nil, problem: .accessibilityNeeded),
     ]
 }

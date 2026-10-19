@@ -18,10 +18,11 @@ public enum CameraEvent: Sendable, Equatable {
     case started(deviceName: String)
     case stopped
     case interrupted(CameraInterruption)
+    case resumed
     case failed(String)
 }
 
-public enum CameraInterruption: String, Sendable, Codable {
+public enum CameraInterruption: String, Sendable, Codable, CaseIterable {
     case inUseByAnotherApp
     case disconnected
     case unavailable
@@ -227,6 +228,11 @@ public final class CameraCapture {
                 _ in
                 // macOS gives no interruption reason; another app taking the camera is the usual cause.
                 events.yield(.interrupted(.inUseByAnotherApp))
+            })
+        observers.append(
+            center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: nil) {
+                _ in
+                events.yield(.resumed)
             })
         observers.append(
             center.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) {

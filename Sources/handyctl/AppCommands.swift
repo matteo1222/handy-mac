@@ -107,3 +107,19 @@ struct Inject: AsyncParsableCommand {
         try reply(to: .inject(frames: stream.frames, record: sink == .record, realtime: realtime), socket: socket)
     }
 }
+
+struct Camera: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Stage a camera condition in the running app (inUse, disconnected, resumed, dark, bright) "
+            + "or click the HUD's one-click fix (fix).")
+
+    @Argument(help: "inUse, disconnected, resumed, dark, bright or fix")
+    var event: String
+
+    @Option(help: "Control socket path.")
+    var socket = ControlSocket.defaultPath
+
+    func run() throws {
+        try reply(to: event == "fix" ? .applyFix : .simulateCamera(event: event), socket: socket)
+    }
+}

@@ -11,6 +11,10 @@ public enum ControlRequest: Codable, Sendable, Equatable {
     /// Runs frames through the app's session instead of the camera. With `record`, output actions
     /// are captured and returned instead of posted. With `realtime`, frames are paced by their timestamps.
     case inject(frames: [LandmarkFrame], record: Bool, realtime: Bool)
+    /// Stages a camera condition (inUse, disconnected, resumed, dark, bright) for HUD checks.
+    case simulateCamera(event: String)
+    /// Clicks the current problem's one-click fix.
+    case applyFix
 }
 
 /// What an injected clip did inside the app.
@@ -93,12 +97,15 @@ public struct HUDSnapshot: Codable, Sendable, Equatable {
     public var title: String
     public var detail: String?
     public var progress: Double?
+    /// The one-click fix the pill offers, if any.
+    public var fix: String?
 
-    public init(visible: Bool, title: String, detail: String?, progress: Double?) {
+    public init(visible: Bool, title: String, detail: String?, progress: Double?, fix: String? = nil) {
         self.visible = visible
         self.title = title
         self.detail = detail
         self.progress = progress
+        self.fix = fix
     }
 }
 

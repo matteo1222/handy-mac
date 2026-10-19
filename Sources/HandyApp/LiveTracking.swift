@@ -22,6 +22,7 @@ final class LiveTracking {
         case starting
         case live(String)
         case paused(CameraInterruption)
+        case permissionDenied
         case failed(String)
 
         var description: String {
@@ -30,13 +31,26 @@ final class LiveTracking {
             case .starting: "starting"
             case .live(let name): "live: \(name)"
             case .paused(let reason): "paused: \(reason.rawValue)"
+            case .permissionDenied: "permission denied"
             case .failed(let message): "failed: \(message)"
             }
         }
+
+        var isLive: Bool {
+            if case .live = self { return true }
+            return false
+        }
     }
 
-    private(set) var camera: CameraState = .off
+    private(set) var camera: CameraState = .off {
+        didSet { if camera != oldValue { onChange() } }
+    }
+    private(set) var isTooDark = false {
+        didSet { if isTooDark != oldValue { onChange() } }
+    }
     private(set) var recordingURL: URL?
+    /// The camera to use; nil means the system default. Persisted by the app's settings.
+    var preferredCameraID: String?
     /// The most recent frame and its features, published only while the debug overlay is open.
     private(set) var debugFrame: DebugFrame?
     var publishesDebugFrames = false
@@ -51,16 +65,22 @@ final class LiveTracking {
     @ObservationIgnored private var pipeline = RollingWindow()
     @ObservationIgnored private var frameCount = 0
     @ObservationIgnored private var last: PerceptionFrame?
+    @ObservationIgnored private var darkness = DarknessMonitor()
+    @ObservationIgnored private var liveName = "camera"
     @ObservationIgnored private let onFrame: (LandmarkFrame) -> Void
+    @ObservationIgnored private let onChange: () -> Void
     private static let log = Logger(subsystem: "dev.handy", category: "tracking")
 
-    /// `onFrame` runs the frame through the app's session and applies the events.
-    init(onFrame: @escaping (LandmarkFrame) -> Void) {
+    /// `onFrame` runs the frame through the app's session and applies the events; `onChange` runs
+    /// when the camera state or darkness changes, which can happen with no frames arriving.
+    init(onFrame: @escaping (LandmarkFrame) -> Void, onChange: @escaping () -> Void) {
         self.onFrame = onFrame
+        self.onChange = onChange
     }
 
-    func start(deviceID: String? = nil) {
+    func start() {
         guard capture == nil, permissionTask == nil else { return }
+        let deviceID = preferredCameraID
         switch CameraPermission.current {
         case .granted:
             startCapture(deviceID: deviceID)
@@ -73,12 +93,18 @@ final class LiveTracking {
                 if granted {
                     self.startCapture(deviceID: deviceID)
                 } else {
-                    self.camera = .failed("camera permission denied")
+                    self.camera = .permissionDenied
                 }
             }
         case .denied, .restricted:
-            camera = .failed("camera permission denied")
+            camera = .permissionDenied
         }
+    }
+
+    /// Stops and starts again, picking up a new preferred camera or a camera freed by another app.
+    func restart() {
+        stop()
+        start()
     }
 
     private func startCapture(deviceID: String?) {
@@ -105,15 +131,27 @@ final class LiveTracking {
         eventTask = nil
         camera = .off
         debugFrame = nil
+        isTooDark = false
+        darkness = DarknessMonitor()
     }
 
-    private func handle(_ event: CameraEvent) {
+    /// Applies a camera event. Internal so handyctl can simulate camera loss.
+    func handle(_ event: CameraEvent) {
         switch event {
-        case .started(let name): camera = .live(name)
+        case .started(let name):
+            liveName = name
+            camera = .live(name)
         case .stopped: camera = .off
         case .interrupted(let reason): camera = .paused(reason)
+        case .resumed: camera = .live(liveName)
         case .failed(let message): camera = .failed(message)
         }
+    }
+
+    /// Applies a brightness reading, as the camera does every frame. Internal so handyctl can simulate darkness.
+    func observeBrightness(_ brightness: Double, at t: Double) {
+        darkness.update(brightness: brightness, at: t)
+        if darkness.isTooDark != isTooDark { isTooDark = darkness.isTooDark }
     }
 
     private func handle(_ frame: PerceptionFrame) {
@@ -124,17 +162,20 @@ final class LiveTracking {
         inference.append(frame.inferenceMilliseconds)
         frameCount += 1
         last = frame
+        observeBrightness(frame.brightness, at: frame.landmarks.t)
         record(frame.landmarks)
     }
 
     /// A camera problem to say plainly in the HUD, or nil.
-    var problem: String? {
+    var problem: Problem? {
         switch camera {
-        case .paused(.inUseByAnotherApp): "Camera in use by another app"
-        case .paused(.disconnected): "Camera disconnected"
-        case .paused(.unavailable): "No camera available"
-        case .failed(let message): message.prefix(1).uppercased() + message.dropFirst()
-        case .off, .starting, .live: nil
+        case .paused(.inUseByAnotherApp): .cameraInUse
+        case .paused(.disconnected): .cameraDisconnected
+        case .paused(.unavailable): .noCamera
+        case .permissionDenied: .cameraPermissionDenied
+        case .failed(let message): .cameraFailed(message)
+        case .live: isTooDark ? .tooDark : nil
+        case .off, .starting: nil
         }
     }
 

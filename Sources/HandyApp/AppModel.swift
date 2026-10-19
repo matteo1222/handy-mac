@@ -1,7 +1,8 @@
-import Foundation
+import AppKit
 import HandyControl
 import HandyCore
 import HandyOutput
+import HandyPerception
 import Observation
 import os
 
@@ -31,10 +32,37 @@ public final class AppModel {
 
     public init() {
         var process: (LandmarkFrame) -> Void = { _ in }
-        tracking = LiveTracking { process($0) }
+        var changed: () -> Void = {}
+        tracking = LiveTracking(onFrame: { process($0) }, onChange: { changed() })
+        tracking.preferredCameraID = UserDefaults.standard.string(forKey: Self.cameraKey)
         process = { [weak self] frame in
             guard let self, !self.injecting else { return }
             self.process(frame)
+        }
+        changed = { [weak self] in self?.updateHUD() }
+    }
+
+    private static let cameraKey = "cameraID"
+
+    /// The chosen camera, persisted across launches. Switching restarts a running camera.
+    var cameraID: String? {
+        get { tracking.preferredCameraID }
+        set {
+            tracking.preferredCameraID = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.cameraKey)
+            if mode != .off { tracking.restart() }
+        }
+    }
+
+    /// Runs a problem's one-click fix.
+    func apply(_ fix: Problem.Fix) {
+        switch fix {
+        case .retryCamera:
+            tracking.restart()
+        case .useFallbackCamera:
+            cameraID = CameraDevices.fallback()?.id
+        case .openCameraSettings, .openAccessibilitySettings:
+            if let url = fix.settingsURL { NSWorkspace.shared.open(url) }
         }
     }
 
@@ -111,9 +139,9 @@ public final class AppModel {
     }
 
     /// The most pressing thing to say plainly in the HUD.
-    private var problem: String? {
+    var problem: Problem? {
         if let camera = tracking.problem { return camera }
-        if output.isBlocked, !AccessibilityPermission.isGranted { return "Accessibility permission needed" }
+        if output.isBlocked, !AccessibilityPermission.isGranted { return .accessibilityNeeded }
         return nil
     }
 
@@ -122,7 +150,7 @@ public final class AppModel {
         let state = currentHUD
         guard state != hudState else { return }
         hudState = state
-        let panel = hud ?? HUDPanel(state: state)
+        let panel = hud ?? HUDPanel(state: state) { [weak self] fix in self?.apply(fix) }
         hud = panel
         hideHUDTask?.cancel()
         panel.show(state)
@@ -143,7 +171,9 @@ public final class AppModel {
             camera: tracking.camera.description, recording: tracking.recordingURL?.path(percentEncoded: false),
             perception: tracking.stats,
             hud: hudState.map {
-                HUDSnapshot(visible: hud?.isVisible ?? false, title: $0.title, detail: $0.detail, progress: $0.progress)
+                HUDSnapshot(
+                    visible: hud?.isVisible ?? false, title: $0.title, detail: $0.detail, progress: $0.progress,
+                    fix: $0.fix?.title)
             },
             accessibilityGranted: AccessibilityPermission.isGranted,
             output: OutputStats(posted: output.posted, refused: output.failed, blocked: output.isBlocked),
@@ -159,23 +189,29 @@ public final class AppModel {
             send(command)
             return ControlResponse(state: snapshot)
         case .screenshot(let target, let path):
-            do {
-                try Screenshots.render(target, model: self, to: URL(filePath: path))
-                return ControlResponse(state: snapshot)
-            } catch {
-                return ControlResponse(ok: false, error: "screenshot: \(error)", state: snapshot)
-            }
+            return attempt("screenshot") { try Screenshots.render(target, model: self, to: URL(filePath: path)) }
         case .record(let on):
-            do {
-                try tracking.setRecording(on)
-                return ControlResponse(state: snapshot)
-            } catch {
-                return ControlResponse(ok: false, error: "recording: \(error.localizedDescription)", state: snapshot)
+            return attempt("recording") { try tracking.setRecording(on) }
+        case .simulateCamera(let event):
+            return attempt("camera") { try simulate(named: event) }
+        case .applyFix:
+            return attempt("fix") {
+                guard let fix = problem?.fix else { throw ControlError("no problem with a fix right now") }
+                apply(fix)
             }
         case .inject(let frames, let record, let realtime):
             guard !injecting else { return ControlResponse(ok: false, error: "already injecting", state: snapshot) }
             let result = await inject(frames, record: record, realtime: realtime)
             return ControlResponse(state: snapshot, injected: result)
+        }
+    }
+
+    private func attempt(_ label: String, _ body: () throws -> Void) -> ControlResponse {
+        do {
+            try body()
+            return ControlResponse(state: snapshot)
+        } catch {
+            return ControlResponse(ok: false, error: "\(label): \(error)", state: snapshot)
         }
     }
 
@@ -203,6 +239,46 @@ public final class AppModel {
         injectedEvents = nil
         updateHUD()
         return InjectResult(events: events, actions: recorder.actions)
+    }
+}
+
+/// Camera conditions handyctl can stage, to check the HUD says them plainly without unplugging anything.
+enum SimulatedCameraEvent: String, CaseIterable {
+    case inUse
+    case disconnected
+    case resumed
+    case dark
+    case bright
+}
+
+struct ControlError: Error, CustomStringConvertible {
+    let description: String
+
+    init(_ description: String) {
+        self.description = description
+    }
+}
+
+extension AppModel {
+    fileprivate func simulate(named name: String) throws {
+        guard let event = SimulatedCameraEvent(rawValue: name) else {
+            let names = SimulatedCameraEvent.allCases.map(\.rawValue).joined(separator: ", ")
+            throw ControlError("unknown camera event \(name); use \(names)")
+        }
+        simulate(event)
+    }
+
+    fileprivate func simulate(_ event: SimulatedCameraEvent) {
+        switch event {
+        case .inUse: tracking.handle(.interrupted(.inUseByAnotherApp))
+        case .disconnected: tracking.handle(.interrupted(.disconnected))
+        case .resumed: tracking.handle(.resumed)
+        case .dark:
+            tracking.handle(.resumed)
+            for step in 0...70 { tracking.observeBrightness(0.04, at: Double(step) / 30) }
+        case .bright: tracking.observeBrightness(0.5, at: 10)
+        }
+        updateHUD()
     }
 }
 
