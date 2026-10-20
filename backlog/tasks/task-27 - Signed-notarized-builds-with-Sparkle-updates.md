@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:39'
-updated_date: '2026-10-20 14:33'
+updated_date: '2026-10-20 15:21'
 labels:
   - ready-for-human
 milestone: m-2
@@ -51,5 +51,5 @@ Done and verified: Sparkle 2.10.0 embedded (otool shows @rpath/Sparkle.framework
 
 App Intents metadata extraction is now part of package-app.sh (resolves the TASK-21 note).
 
-Local Developer ID signing attempted (OUT_DIR=.build/release-app APP_IDENTITY='Developer ID Application: … (FB7N6NWM59)' scripts/package-app.sh release): macOS asks keychain permission once per codesign call (one per nested Sparkle helper), so it was stopped. To run locally, grant codesign access to the Developer ID key once (Keychain Access › key › Access Control) or sign in CI with an imported keychain. Notarization still needs a notarytool profile (none in the keychain).
+Local Developer ID signing attempted (OUT_DIR=.build/release-app APP_IDENTITY='Developer ID Application: <name> (<team id>)' scripts/package-app.sh release): macOS asks keychain permission once per codesign call (one per nested Sparkle helper), so it was stopped. To run locally, grant codesign access to the Developer ID key once (Keychain Access › key › Access Control) or sign in CI with an imported keychain. Notarization still needs a notarytool profile (none in the keychain).
 <!-- SECTION:NOTES:END -->

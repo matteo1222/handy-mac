@@ -3,7 +3,9 @@ name: release
 # Builds, signs with Developer ID, notarizes and staples Handy, then publishes the zip and the
 # Sparkle appcast to a GitHub release. Runs when a v* tag is pushed.
 #
-# Repository secrets (set by a maintainer with the Apple Developer account):
+# Secrets live in the "release" environment (Settings > Environments), so only this job, on a
+# v* tag, can read them; pull requests from forks never see them. Set by a maintainer with the
+# Apple Developer account:
 #   DEVELOPER_ID_P12          base64 of the Developer ID Application certificate + key (.p12)
 #   DEVELOPER_ID_P12_PASSWORD password of that .p12
 #   DEVELOPER_ID_IDENTITY     e.g. "Developer ID Application: Name (TEAMID)"
@@ -18,11 +20,19 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: macos-26
+    environment: release
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Install tools
         run: brew install swiftlint
       - name: make verify

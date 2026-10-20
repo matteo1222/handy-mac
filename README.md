@@ -35,3 +35,7 @@ scripts/run-app.sh     # package and launch the menu-bar app
 ```
 
 Stop Handy from anywhere with ⌃⌥⌘H; ⌃⌥⌘/ shows every gesture. Agents: start with [AGENTS.md](AGENTS.md).
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). Bundled models and training data have their own licences: [NOTICES.md](NOTICES.md). Report security issues privately: [SECURITY.md](SECURITY.md).

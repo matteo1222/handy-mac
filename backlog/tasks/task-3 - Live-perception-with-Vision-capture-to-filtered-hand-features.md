@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-20 14:35'
+updated_date: '2026-10-20 15:21'
 labels:
   - ready-for-agent
 milestone: m-0
@@ -52,5 +52,5 @@ Vision finds all 21 joints on rendered ✋/👍/🤏/🤙 emoji, which gives cam
 
 Checked with direct evidence: AC2 HandTrackerTests (confidence < 0.3 dropped, < 15 joints rejected, nearest-wrist identity; chirality comes from Vision on the mirrored frame, which the rendered-emoji test confirms reads a right hand as right); AC3 1€ filter reset on track loss (test) and scale-normalised features (pinch, reach/curl, palm centroid, facing, velocity); AC5 recordedSessionReplaysToIdenticalFeatures. Open: AC1 and AC4 need the live camera (Handy's camera permission prompt is still unanswered on this Mac, so no frames have arrived); AC6 measured on Apple M3 (inference p95 8.0 ms, filter+features p95 0.006 ms) but not yet on an M1.
 
-Live evidence (2026-10-20): capture runs 1280x720 mirrored, 30 fps with a hand (recording shows 30 frames/s) and 10 fps idle (frameInterval p50 100 ms after 5 s without a hand); mirroring confirmed by the chirality analysis of the live recording (realRightHandPointAndPinch fixture). Debug overlay verified: handyctl screenshot debug-overlay during handyctl inject of the real clip shows all 21 landmarks, palm centroid and the feature line (scale, pinch, reach, facing). AC6: with Vision, live inference is p50 10 ms / p95 27 ms on M3 (over budget); the Core ML backend measures p50 1.1-2.2 / p95 3.4-5.2 ms on real video clips and filter+features p95 < 1 ms, so AC6 passes once TASK-4 picks Core ML as the default (no M1 available here; measured on M3).
+Live evidence (2026-10-20): capture runs 1280x720 mirrored, 30 fps with a hand (recording shows 30 frames/s) and 10 fps idle (frameInterval p50 100 ms after 5 s without a hand); mirroring confirmed by the chirality analysis of the live recording (a live recording, not kept in the repo). Debug overlay verified: handyctl screenshot debug-overlay during handyctl inject of a real-hand clip shows all 21 landmarks, palm centroid and the feature line (scale, pinch, reach, facing). AC6: with Vision, live inference is p50 10 ms / p95 27 ms on M3 (over budget); the Core ML backend measures p50 1.1-2.2 / p95 3.4-5.2 ms on real video clips and filter+features p95 < 1 ms, so AC6 passes once TASK-4 picks Core ML as the default (no M1 available here; measured on M3).
 <!-- SECTION:NOTES:END -->
