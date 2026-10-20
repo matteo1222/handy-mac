@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-19 16:07'
+updated_date: '2026-10-20 15:39'
 labels:
   - ready-for-agent
 milestone: m-0
@@ -28,7 +28,7 @@ Handy is greenfield (decision-1), so nothing exists yet. Every later ticket need
 <!-- AC:BEGIN -->
 - [x] #1 SwiftPM-only build (no Xcode project, no Tuist): library packages plus a Handy executable target packaged into an .app by scripts/package-app.sh; all build with Swift 6 language mode, strict concurrency and warnings as errors
 - [x] #2 A HandyCore import of AppKit, AVFoundation or Vision fails to compile; SwiftLint custom rules reject Date(), DispatchQueue, Task.sleep and CGEvent in HandyCore
-- [ ] #3 make verify runs format, lint, build and tests; the same command runs in CI on a macOS runner and in a lefthook pre-commit (fast subset)
+- [x] #3 make verify runs format, lint, build and tests; the same command runs in CI on a macOS runner and in a lefthook pre-commit (fast subset)
 - [x] #4 Every lint suppression must be listed in DEBT.md with a reason or CI fails
 - [ ] #5 Menu-bar item toggles Off/Watching; a global hotkey returns to Off from any state
 - [x] #6 handyctl doctor prints build, permission and version info as JSON and exits non-zero on failure
@@ -49,4 +49,6 @@ Handy is greenfield (decision-1), so nothing exists yet. Every later ticket need
 
 <!-- SECTION:NOTES:BEGIN -->
 Dropped Tuist at the user's request: the app is a SwiftPM executable packaged by scripts/package-app.sh. Fence proven by scripts/prove-fence.sh (part of make verify). make verify green locally in ~11 s; lefthook installed and runs make verify-fast. Not yet proven: the GitHub Actions run (nothing pushed) and a physical ⌃⌥⌘H keypress (the terminal lacks Accessibility to synthesize it; handyctl state reports the hotkey registered and stop-from-every-mode is unit tested).
+
+CI green on GitHub-hosted macos-26 (run 39449849356, main 08a619e): make verify passes in CI, and lefthook runs the fast subset pre-commit. The billing block was the private-repo Actions budget ($0, usage blocked); the repo is now public, so standard runners are free. Remaining: AC5 needs a physical press of the stop hotkey.
 <!-- SECTION:NOTES:END -->
