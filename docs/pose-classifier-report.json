@@ -2,31 +2,31 @@
   "accuracy" : 0.9927,
   "data" : "synthetic hand model, seed 1",
   "heldOutSamples" : 3000,
-  "noGestureFalsePositiveRate" : 0.0041,
+  "noGestureFalsePositiveRate" : 0.0034,
   "oneShotRecall" : {
-    "shaka" : 0.9692,
-    "thumbsDown" : 0.9821,
-    "thumbsUp" : 0.9884
+    "shaka" : 0.9827,
+    "thumbsDown" : 0.9801,
+    "thumbsUp" : 0.9865
   },
   "perClass" : {
     "none" : {
       "precision" : 0.9898,
-      "recall" : 0.9952,
+      "recall" : 0.9959,
       "support" : 1461
     },
     "shaka" : {
-      "precision" : 0.9981,
-      "recall" : 0.9865,
+      "precision" : 0.9961,
+      "recall" : 0.9923,
       "support" : 520
     },
     "thumbsDown" : {
-      "precision" : 0.9901,
-      "recall" : 0.994,
+      "precision" : 0.998,
+      "recall" : 0.9841,
       "support" : 502
     },
     "thumbsUp" : {
-      "precision" : 0.9981,
-      "recall" : 0.9903,
+      "precision" : 0.9923,
+      "recall" : 0.9923,
       "support" : 517
     }
   },

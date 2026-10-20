@@ -22,6 +22,7 @@ struct HandyCtl: AsyncParsableCommand {
             Synth.self,
             Replay.self,
             Features.self,
+            Video.self,
             BenchPerception.self,
             BenchCursor.self,
             BenchCorpus.self,

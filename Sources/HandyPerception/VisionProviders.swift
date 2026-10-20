@@ -33,27 +33,39 @@ public final class VisionHandPoseProvider: HandPoseProvider {
                 geometry.point(normalizedX: point.location.x, normalizedY: point.location.y),
                 confidence: Double(point.confidence))
         }
-        // Frames are mirrored before Vision sees them, so its chirality already names the user's hand.
-        let chirality: HandyCore.Chirality = observation.chirality == .left ? .left : .right
+        // Vision names the hand as it appears in the image. Frames are mirrored before Vision sees them,
+        // so a user's right hand looks like a left hand: swap to name the user's own hand (confirmed on a
+        // live recording, where the raised right hand came back `.left`).
+        let chirality: HandyCore.Chirality = observation.chirality == .left ? .right : .left
         return HandPose(chirality: chirality, joints: joints)
     }
 }
 
-/// Face yaw from `VNDetectFaceRectanglesRequest` (revision 3 reports yaw).
+/// Face yaw from `VNDetectFaceRectanglesRequest`. Revision 3 reports yaw; if it finds nothing, the
+/// default revision gets a try, and a face found without a yaw counts as facing the camera.
 public final class VisionFaceProvider: FaceProvider {
-    private let request: VNDetectFaceRectanglesRequest
+    private let withYaw: VNDetectFaceRectanglesRequest
+    private let fallback = VNDetectFaceRectanglesRequest()
 
     public init() {
-        request = VNDetectFaceRectanglesRequest()
-        request.revision = VNDetectFaceRectanglesRequestRevision3
+        withYaw = VNDetectFaceRectanglesRequest()
+        withYaw.revision = VNDetectFaceRectanglesRequestRevision3
     }
 
     public func face(in pixelBuffer: CVPixelBuffer) throws -> FaceSample {
-        try VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:]).perform([request])
-        let largest = (request.results ?? []).max {
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+        try handler.perform([withYaw])
+        if let face = Self.largest(withYaw.results) {
+            return FaceSample(yaw: face.yaw.map { $0.doubleValue * 180 / .pi } ?? 0)
+        }
+        try handler.perform([fallback])
+        return FaceSample(yaw: Self.largest(fallback.results).map { _ in 0 })
+    }
+
+    private static func largest(_ faces: [VNFaceObservation]?) -> VNFaceObservation? {
+        (faces ?? []).max {
             $0.boundingBox.width * $0.boundingBox.height < $1.boundingBox.width * $1.boundingBox.height
         }
-        return FaceSample(yaw: largest?.yaw.map { $0.doubleValue * 180 / .pi })
     }
 }
 

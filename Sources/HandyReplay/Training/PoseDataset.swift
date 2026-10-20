@@ -51,7 +51,7 @@ public enum PoseDataset {
         func view() -> Double { random.unit() < 0.5 ? around(0, 35) : around(180, 35) }
         switch label {
         case .thumbsUp, .thumbsDown:
-            let roll = label == .thumbsUp ? around(-90, 30) : around(90, 30)
+            let roll = label == .thumbsUp ? around(90, 30) : around(-90, 30)
             return HandShape(
                 curl: FingerValues(
                     thumb: straight(), index: curled(), middle: curled(), ring: curled(), little: curled()),
@@ -60,7 +60,7 @@ public enum PoseDataset {
             return HandShape(
                 curl: FingerValues(
                     thumb: straight(), index: curled(), middle: curled(), ring: curled(), little: straight()),
-                yaw: view(), roll: around(-45, 65))
+                yaw: view(), roll: around(45, 65))
         case .none:
             return noGestureShape(random: &random)
         }
