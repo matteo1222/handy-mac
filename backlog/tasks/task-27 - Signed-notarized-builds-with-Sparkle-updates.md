@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:39'
-updated_date: '2026-10-19 18:30'
+updated_date: '2026-10-20 14:33'
 labels:
   - ready-for-human
 milestone: m-2
@@ -50,4 +50,6 @@ From TASK-21: run appintentsmetadataprocessor during packaging (needs -emit-cons
 Done and verified: Sparkle 2.10.0 embedded (otool shows @rpath/Sparkle.framework), codesign --verify --deep --strict passes on the ad-hoc bundle, the dev build has no feed keys so the updater never starts, and the running app holds 0 internet sockets (lsof). Launch at login is a Settings toggle backed by SMAppService, unregistered by default. Needs a human with the Apple Developer account: create the Developer ID certificate and a notarytool profile, generate Sparkle EdDSA keys (generate_keys), set the release workflow secrets, then tag v0.1.0 to prove AC1 and AC2 end to end. Still open from TASK-21: App Intents metadata extraction for Shortcuts discovery. Note: SwiftPM can hang on a keychain prompt when resolving the Sparkle binary; --disable-keychain avoids it (documented in AGENTS.md).
 
 App Intents metadata extraction is now part of package-app.sh (resolves the TASK-21 note).
+
+Local Developer ID signing attempted (OUT_DIR=.build/release-app APP_IDENTITY='Developer ID Application: … (FB7N6NWM59)' scripts/package-app.sh release): macOS asks keychain permission once per codesign call (one per nested Sparkle helper), so it was stopped. To run locally, grant codesign access to the Developer ID key once (Keychain Access › key › Access Control) or sign in CI with an imported keychain. Notarization still needs a notarytool profile (none in the keychain).
 <!-- SECTION:NOTES:END -->

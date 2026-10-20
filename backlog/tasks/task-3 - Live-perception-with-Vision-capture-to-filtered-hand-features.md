@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-19 18:24'
+updated_date: '2026-10-20 14:35'
 labels:
   - ready-for-agent
 milestone: m-0
@@ -27,10 +27,10 @@ The engine needs real, steady hand features from the built-in camera. This slice
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 AVCaptureSession at 720p/30 fps (60 when available), late frames discarded, mirrored; throttles to 10 fps after 5 s with no hand
+- [x] #1 AVCaptureSession at 720p/30 fps (60 when available), late frames discarded, mirrored; throttles to 10 fps after 5 s with no hand
 - [x] #2 Joints below 0.3 confidence dropped; hands with fewer than 15 valid joints rejected; hands matched across frames by nearest wrist with mirrored chirality
 - [x] #3 Per-joint, per-axis 1€ filter that resets on track loss; features normalised by hand scale (pinch distances, curls, palm centroid, palm facing, velocities)
-- [ ] #4 A debug overlay shows live landmarks and features
+- [x] #4 A debug overlay shows live landmarks and features
 - [x] #5 Live sessions can be recorded to the landmark format and replayed with identical features
 - [ ] #6 Pose + filter + features stay within budget on M1 (inference ≤ 10 ms, filter+features ≤ 1 ms) as measured by a bench
 <!-- AC:END -->
@@ -51,4 +51,6 @@ The engine needs real, steady hand features from the built-in camera. This slice
 Vision finds all 21 joints on rendered ✋/👍/🤏/🤙 emoji, which gives camera-free backend tests and a bench. bench-perception (release, Apple M3): inference p50 6.0 / p95 8.0 ms, filter+features p95 0.006 ms for two hands. Not yet measured on M1. Recording round-trip test proves identical features.
 
 Checked with direct evidence: AC2 HandTrackerTests (confidence < 0.3 dropped, < 15 joints rejected, nearest-wrist identity; chirality comes from Vision on the mirrored frame, which the rendered-emoji test confirms reads a right hand as right); AC3 1€ filter reset on track loss (test) and scale-normalised features (pinch, reach/curl, palm centroid, facing, velocity); AC5 recordedSessionReplaysToIdenticalFeatures. Open: AC1 and AC4 need the live camera (Handy's camera permission prompt is still unanswered on this Mac, so no frames have arrived); AC6 measured on Apple M3 (inference p95 8.0 ms, filter+features p95 0.006 ms) but not yet on an M1.
+
+Live evidence (2026-10-20): capture runs 1280x720 mirrored, 30 fps with a hand (recording shows 30 frames/s) and 10 fps idle (frameInterval p50 100 ms after 5 s without a hand); mirroring confirmed by the chirality analysis of the live recording (realRightHandPointAndPinch fixture). Debug overlay verified: handyctl screenshot debug-overlay during handyctl inject of the real clip shows all 21 landmarks, palm centroid and the feature line (scale, pinch, reach, facing). AC6: with Vision, live inference is p50 10 ms / p95 27 ms on M3 (over budget); the Core ML backend measures p50 1.1-2.2 / p95 3.4-5.2 ms on real video clips and filter+features p95 < 1 ms, so AC6 passes once TASK-4 picks Core ML as the default (no M1 available here; measured on M3).
 <!-- SECTION:NOTES:END -->

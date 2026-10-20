@@ -4,7 +4,7 @@ title: Pose classifier v0 with thumbs-up/down → Return/Esc
 status: In Progress
 assignee: []
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-19 16:56'
+updated_date: '2026-10-20 14:21'
 labels:
   - ready-for-agent
 milestone: m-1
@@ -48,4 +48,6 @@ Keyboard intent needs static poses that never fire by accident. A small MLP over
 
 <!-- SECTION:NOTES:BEGIN -->
 Held-out (synthetic, different seed, more noise) in docs/pose-classifier-report.json: accuracy 0.993, no-gesture one-shot false-positive rate 0.41%, one-shot recall thumbsUp 0.988 / thumbsDown 0.982 / shaka 0.969. These numbers measure fit to the synthetic generator, not real hands. Cross-domain check: real Vision landmarks from rendered 👍 🤙 ✋ 🤏 classify correctly (test). Getting there needed realistic geometry in the generator: thumbs are fists rolled ~90°, shakas range upright to sideways, curled fingers vary in knuckle bend. Review also found a synth bug (steps compared by value, so a script whose first and last steps match never advanced); fixed with a regression test. AC1 open: no HaGRID landmarks yet (needs a dataset download) and the model is pure-Swift weights rather than a Core ML file (decision-2: Core ML on the ANE is not bit-reproducible, which would break replay tests). Weights are 1,668 parameters (19 KB of source).
+
+HaGRID training done (a62e122): scripts/hagrid-landmarks.py (HaGRID v2 annotations_with_landmarks, CC BY-SA 4.0) -> train-classifier --hagrid. Held-out HaGRID subjects: accuracy 0.993, no-gesture false positives 0.21%, one-shot recall thumbsUp 0.985 / thumbsDown 0.978 / shaka 0.968 (docs/pose-classifier-report.json, subsets.hagrid). Weights are 18 KB of generated Swift per decision-2 (still proposed); AC1's 'Core ML model' wording needs decision-2 accepted, otherwise a Core ML export is a small follow-up. Licence noted in NOTICES.md.
 <!-- SECTION:NOTES:END -->
