@@ -13,10 +13,12 @@ public enum VideoLandmarks {
         public var fps = 30.0
         /// Face yaw every this many seconds (the live detector runs at 5 fps).
         public var faceInterval = 0.2
+        public var backend = HandBackend.vision
 
-        public init(mirror: Bool = true, fps: Double = 30) {
+        public init(mirror: Bool = true, fps: Double = 30, backend: HandBackend = .vision) {
             self.mirror = mirror
             self.fps = fps
+            self.backend = backend
         }
     }
 
@@ -50,7 +52,7 @@ public enum VideoLandmarks {
         reader.add(output)
         guard reader.startReading() else { throw Failure.readerFailed(reader.error?.localizedDescription ?? "unknown") }
 
-        let hands = VisionHandPoseProvider()
+        let hands = options.backend.makeProvider()
         let faces = VisionFaceProvider()
         let context = CIContext()
         var frames: [LandmarkFrame] = []

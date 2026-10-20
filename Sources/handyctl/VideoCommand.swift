@@ -21,6 +21,9 @@ struct Video: AsyncParsableCommand {
     @Flag(inversion: .prefixedNo, help: "Mirror frames like the live camera.")
     var mirror = true
 
+    @Option(help: "Hand-pose backend: vision or coreml.")
+    var backend = "vision"
+
     @Option(help: "Frames per second to process.")
     var fps = 30.0
 
@@ -38,8 +41,14 @@ struct Video: AsyncParsableCommand {
             }
             return LandmarkStream.Label(start: start, end: end, name: String(parts[2]))
         }
+        guard let handBackend = HandBackend(rawValue: backend) else {
+            throw ValidationError("backend must be vision or coreml")
+        }
         let result = try await VideoLandmarks.process(
-            URL(filePath: input), options: VideoLandmarks.Options(mirror: mirror, fps: fps))
+            URL(filePath: input),
+            options: VideoLandmarks.Options(
+                mirror: mirror, fps: fps,
+                backend: handBackend))
         var meta = ["aspect": String(result.aspect), "video": URL(filePath: input).lastPathComponent]
         meta["source"] = source
         let stream = LandmarkStream(header: .init(source: "video", labels: labels, meta: meta), frames: result.frames)

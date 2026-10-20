@@ -111,7 +111,7 @@ final class LiveTracking {
     }
 
     private func startCapture(deviceID: String?) {
-        let capture = CameraCapture()
+        let capture = CameraCapture(hands: HandBackend.preferred.makeProvider())
         self.capture = capture
         camera = .starting
         frameTask = Task { [weak self] in

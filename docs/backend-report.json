@@ -1,0 +1,141 @@
+{
+  "clips": {
+    "ghana-alphabet": {
+      "coreml": {
+        "dimVsNormalPixels": 36.1,
+        "frames": 1532,
+        "handRate": 0.873,
+        "handRateDim": 0.801,
+        "inferenceMilliseconds": {
+          "p50": 1.309,
+          "p95": 4.582
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 1.368,
+          "p95": 4.972
+        },
+        "jitterPixelsRMS": 29.46,
+        "jitterPixelsRMSDim": 37.89
+      },
+      "vision": {
+        "dimVsNormalPixels": 10.2,
+        "frames": 1532,
+        "handRate": 0.944,
+        "handRateDim": 0.941,
+        "inferenceMilliseconds": {
+          "p50": 7.241,
+          "p95": 9.966
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 7.074,
+          "p95": 10.322
+        },
+        "jitterPixelsRMS": 22.65,
+        "jitterPixelsRMSDim": 29.67
+      }
+    },
+    "hand-wave": {
+      "coreml": {
+        "dimVsNormalPixels": 140.9,
+        "frames": 156,
+        "handRate": 1.0,
+        "handRateDim": 0.782,
+        "inferenceMilliseconds": {
+          "p50": 2.227,
+          "p95": 3.426
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 1.13,
+          "p95": 4.844
+        },
+        "jitterPixelsRMS": 1.03,
+        "jitterPixelsRMSDim": 8.15
+      },
+      "vision": {
+        "dimVsNormalPixels": 31.2,
+        "frames": 156,
+        "handRate": 1.0,
+        "handRateDim": 0.904,
+        "inferenceMilliseconds": {
+          "p50": 7.272,
+          "p95": 9.337
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 7.197,
+          "p95": 9.935
+        },
+        "jitterPixelsRMS": 10.95,
+        "jitterPixelsRMSDim": 27.45
+      }
+    },
+    "rock-paper-scissors": {
+      "coreml": {
+        "dimVsNormalPixels": 258.0,
+        "frames": 1435,
+        "handRate": 0.925,
+        "handRateDim": 0.891,
+        "inferenceMilliseconds": {
+          "p50": 1.462,
+          "p95": 5.231
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 1.658,
+          "p95": 5.072
+        },
+        "jitterPixelsRMS": 24.35,
+        "jitterPixelsRMSDim": 31.22
+      },
+      "vision": {
+        "dimVsNormalPixels": 118.7,
+        "frames": 1435,
+        "handRate": 0.747,
+        "handRateDim": 0.471,
+        "inferenceMilliseconds": {
+          "p50": 6.286,
+          "p95": 10.549
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 3.686,
+          "p95": 9.309
+        },
+        "jitterPixelsRMS": 24.0,
+        "jitterPixelsRMSDim": 47.24
+      }
+    },
+    "six-seven": {
+      "coreml": {
+        "dimVsNormalPixels": 11.5,
+        "frames": 93,
+        "handRate": 0.935,
+        "handRateDim": 0.903,
+        "inferenceMilliseconds": {
+          "p50": 1.114,
+          "p95": 3.729
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 1.147,
+          "p95": 4.014
+        },
+        "jitterPixelsRMS": 12.68,
+        "jitterPixelsRMSDim": 20.86
+      },
+      "vision": {
+        "dimVsNormalPixels": 143.8,
+        "frames": 93,
+        "handRate": 0.978,
+        "handRateDim": 0.935,
+        "inferenceMilliseconds": {
+          "p50": 6.142,
+          "p95": 7.773
+        },
+        "inferenceMillisecondsDim": {
+          "p50": 5.809,
+          "p95": 7.774
+        },
+        "jitterPixelsRMS": 26.51,
+        "jitterPixelsRMSDim": 41.14
+      }
+    }
+  },
+  "method": "Compares hand-pose backends on landmark clips extracted from the same videos."
+}

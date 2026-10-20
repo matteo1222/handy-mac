@@ -1,0 +1,78 @@
+[
+  {
+    "metadataOutputVersion" : "3.0",
+    "shortDescription" : "MediaPipe HandPalmDetector (Apache-2.0), converted from zmurez\/MediaPipePyTorch",
+    "outputSchema" : [
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float16",
+        "formattedType" : "MultiArray (Float16 2944 × 19)",
+        "shortDescription" : "",
+        "shape" : "[2944, 19]",
+        "name" : "detections",
+        "type" : "MultiArray"
+      }
+    ],
+    "storagePrecision" : "Float16",
+    "modelParameters" : [
+
+    ],
+    "specificationVersion" : 8,
+    "mlProgramOperationTypeHistogram" : {
+      "Ios17.mul" : 21,
+      "Ios17.transpose" : 6,
+      "Ios17.sub" : 2,
+      "Ios17.conv" : 89,
+      "Stack" : 1,
+      "Ios16.maxPool" : 4,
+      "Ios17.add" : 61,
+      "Ios17.convTranspose" : 2,
+      "Ios17.concat" : 2,
+      "Ios16.relu" : 44,
+      "Ios17.sliceByIndex" : 21,
+      "Ios17.clip" : 1,
+      "Ios16.sigmoid" : 1,
+      "Ios17.reshape" : 6,
+      "Ios17.cast" : 1,
+      "Pad" : 8
+    },
+    "computePrecision" : "Mixed (Float16, Float32, Int32)",
+    "isUpdatable" : "0",
+    "stateSchema" : [
+
+    ],
+    "availability" : {
+      "macOS" : "14.0",
+      "tvOS" : "17.0",
+      "visionOS" : "1.0",
+      "watchOS" : "10.0",
+      "iOS" : "17.0",
+      "macCatalyst" : "17.0"
+    },
+    "modelType" : {
+      "name" : "MLModelType_mlProgram"
+    },
+    "inputSchema" : [
+      {
+        "height" : "256",
+        "colorspace" : "RGB",
+        "isOptional" : "0",
+        "width" : "256",
+        "isColor" : "1",
+        "formattedType" : "Image (Color 256 × 256)",
+        "hasSizeFlexibility" : "0",
+        "type" : "Image",
+        "shortDescription" : "",
+        "name" : "image"
+      }
+    ],
+    "userDefinedMetadata" : {
+      "com.github.apple.coremltools.version" : "8.1",
+      "com.github.apple.coremltools.source" : "torch==2.5.1",
+      "com.github.apple.coremltools.source_dialect" : "TorchScript"
+    },
+    "generatedClassName" : "HandPalmDetector",
+    "method" : "predict"
+  }
+]

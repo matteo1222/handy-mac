@@ -11,7 +11,15 @@ struct OnboardingView: View {
             StepHeader(step: model.step)
             content
                 .frame(maxWidth: .infinity, minHeight: 200)
-            StepDots(current: model.step)
+            HStack {
+                StepDots(current: model.step)
+                if model.tutorial.canSkip {
+                    Spacer()
+                    Button("Skip this step") { model.skip() }
+                        .buttonStyle(.link)
+                        .font(.callout)
+                }
+            }
         }
         .padding(28)
         .frame(width: 520)
@@ -62,7 +70,7 @@ struct OnboardingView: View {
                 ProgressView(value: model.tutorial.progress ?? 0)
             }
         case .click:
-            ClickStep(accessibilityGranted: model.accessibilityGranted)
+            ClickStep(accessibilityGranted: model.accessibilityGranted) { model.targetClicked() }
         case .scroll:
             VStack(spacing: 10) {
                 Instruction(symbol: "hand.point.up.fill", text: "Raise two fingers and move up or down to scroll.")
@@ -159,13 +167,13 @@ private struct PermissionStep: View {
 
 private struct ClickStep: View {
     let accessibilityGranted: Bool
-    @State private var clicks = 0
+    let clicked: () -> Void
 
     var body: some View {
         VStack(spacing: 14) {
             if accessibilityGranted {
                 Instruction(symbol: "hand.pinch.fill", text: "Point at the target and pinch thumb and index to click.")
-                Button(clicks == 0 ? "Click me" : "Clicked") { clicks += 1 }
+                Button("Click me", action: clicked)
                     .controlSize(.extraLarge)
                     .buttonStyle(.borderedProminent)
             } else {

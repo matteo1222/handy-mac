@@ -58,3 +58,24 @@ private let walkthrough = """
     #expect(try advice(0.9, 0.85, brightness: 0.05) == .moreLight)
     #expect(FramingAdvice.advise(FrameFeatures(t: 0, hands: []), brightness: 0.5, aspect: 16.0 / 9) == .raiseHand)
 }
+
+@Test func clickingTheTargetCompletesTheClickStep() {
+    var tutorial = Tutorial(step: .move)
+    tutorial.targetClicked()
+    #expect(tutorial.step == .move, "only the click step listens for the target")
+    tutorial = Tutorial(step: .click)
+    tutorial.targetClicked()
+    #expect(tutorial.step == .scroll)
+}
+
+@Test func gestureStepsCanBeSkippedButSetupStepsCannot() {
+    var tutorial = Tutorial(step: .welcome)
+    #expect(!tutorial.canSkip)
+    tutorial.skip()
+    #expect(tutorial.step == .welcome)
+    for step in [Tutorial.Step.engage, .move, .click, .scroll, .disengage] {
+        tutorial = Tutorial(step: step)
+        tutorial.skip()
+        #expect(tutorial.step == step.next)
+    }
+}

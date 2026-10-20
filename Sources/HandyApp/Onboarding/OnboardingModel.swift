@@ -52,6 +52,18 @@ final class OnboardingModel {
         tutorial.continueFromButton()
     }
 
+    func targetClicked() {
+        let before = step
+        tutorial.targetClicked()
+        if step != before { stepChanged() }
+    }
+
+    func skip() {
+        let before = step
+        tutorial.skip()
+        if step != before { stepChanged() }
+    }
+
     func handle(_ event: Engine.Event) {
         let before = step
         tutorial.handle(event)

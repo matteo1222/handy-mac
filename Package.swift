@@ -29,7 +29,8 @@ let package = Package(
             swiftSettings: strict,
             plugins: ["FencePlugin"]
         ),
-        .target(name: "HandyPerception", dependencies: ["HandyCore"], swiftSettings: strict),
+        .target(
+            name: "HandyPerception", dependencies: ["HandyCore"], resources: [.copy("Models")], swiftSettings: strict),
         .target(name: "HandyOutput", dependencies: ["HandyCore"], swiftSettings: strict),
         .target(name: "HandyReplay", dependencies: ["HandyCore"], swiftSettings: strict),
         .target(name: "HandyControl", dependencies: ["HandyCore"], swiftSettings: strict),

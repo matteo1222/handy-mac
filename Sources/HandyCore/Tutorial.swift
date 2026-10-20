@@ -38,6 +38,21 @@ public struct Tutorial: Sendable, Equatable {
         advance()
     }
 
+    /// The practice target was clicked. A Handy pinch lands on it as a real click, and so does the
+    /// trackpad: either way the step is done, so the tutorial never dead-ends on a "Clicked" button.
+    public mutating func targetClicked() {
+        guard step == .click else { return }
+        advance()
+    }
+
+    /// Gesture steps can be skipped, so a gesture that will not register never strands the user.
+    public var canSkip: Bool { [.engage, .move, .click, .scroll, .disengage].contains(step) }
+
+    public mutating func skip() {
+        guard canSkip else { return }
+        advance()
+    }
+
     public var progress: Double? {
         switch step {
         case .move: min(travel / Self.moveGoal, 1)

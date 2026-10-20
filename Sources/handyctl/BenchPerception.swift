@@ -9,11 +9,15 @@ struct BenchPerception: ParsableCommand {
         commandName: "bench-perception",
         abstract: "Time hand-pose inference and filter+features against the per-frame budgets. Exits 1 over budget.",
         discussion: """
-            Inference runs the Vision backend on rendered hand frames (no camera needed).
+            Inference runs the chosen backend on rendered hand frames (no camera needed), in blocks of one
+            frame so a tracking backend runs mostly on tracked frames, as it would on a live camera.
             Filter+features runs HandyCore's tracker and feature extractor on a two-hand synthetic clip.
             Budgets (docs/spec.md): inference p95 <= 10 ms, filter+features p95 <= 1 ms.
             """
     )
+
+    @Option(help: "Hand-pose backend: vision or coreml.")
+    var backend = "vision"
 
     @Option(help: "Inference iterations.")
     var iterations = 200
@@ -27,15 +31,21 @@ struct BenchPerception: ParsableCommand {
             Double(duration.components.seconds) * 1000 + Double(duration.components.attoseconds) / 1e15
         }
 
-        let provider = VisionHandPoseProvider()
-        let frames = ["✋", "👍", "🤏", "🤙"].compactMap { SampleHandImage.pixelBuffer($0) }
+        let provider: any HandPoseProvider =
+            switch backend {
+            case "vision": VisionHandPoseProvider()
+            case "coreml": try CoreMLHandPoseProvider()
+            default: throw ValidationError("backend must be vision or coreml")
+            }
+        let frames = ["✋", "👍", "🤏", "🤙"].compactMap { SampleHandImage.pixelBuffer($0, mirrored: true) }
         guard let warmup = frames.first else { throw ValidationError("could not render sample frames") }
         let modelLoad = try clock.measure { _ = try provider.hands(in: warmup) }
         var inference: [Double] = []
         var detected = 0
         for index in 0..<iterations {
             var hands: [HandPose] = []
-            let elapsed = try clock.measure { hands = try provider.hands(in: frames[index % frames.count]) }
+            let frame = frames[index * frames.count / iterations]
+            let elapsed = try clock.measure { hands = try provider.hands(in: frame) }
             inference.append(milliseconds(elapsed))
             detected += hands.isEmpty ? 0 : 1
         }
