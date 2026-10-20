@@ -124,6 +124,8 @@ public struct ClassifierReport: Codable, Sendable {
     public var noGestureFalsePositiveRate: Double
     /// Fraction of pose samples that pass the one-shot rule for their own pose.
     public var oneShotRecall: [String: Double]
+    /// The same metrics on named parts of the held-out set, such as real hands only.
+    public var subsets: [String: ClassifierReport]?
 
     public static func evaluate(
         _ classifier: PoseClassifier, on samples: [LabelledSample], trainSamples: Int, data: String,

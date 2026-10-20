@@ -88,3 +88,52 @@ public enum PoseDataset {
         }
     }
 }
+
+/// Real hands from HaGRID (CC BY-SA 4.0): MediaPipe landmarks annotated on photos of people
+/// performing gestures, preprocessed by `scripts/hagrid-landmarks.py` into JSON lines of
+/// `{"label", "hand", "split", "j": [[x, y] × 21]}` in mirrored camera orientation, frame heights.
+public enum HaGRID {
+    struct Row: Decodable {
+        var label: String
+        var hand: String
+        var split: String
+        var j: [[Double]]
+    }
+
+    /// HaGRID's gesture names mapped onto the classifier's classes; every other gesture is "none".
+    public static func poseClass(_ label: String) -> PoseClass {
+        switch label {
+        case "like": .thumbsUp
+        case "dislike": .thumbsDown
+        case "call": .shaka
+        default: .none
+        }
+    }
+
+    /// Samples from one split ("train" or "test"), with "none" capped at `noneRatio` times the
+    /// gesture samples so the everyday class does not swamp the three gestures.
+    public static func samples(from url: URL, split: String, noneRatio: Double = 2) throws -> [LabelledSample] {
+        let decoder = JSONDecoder()
+        var gestures: [LabelledSample] = []
+        var others: [LabelledSample] = []
+        for line in try String(contentsOf: url, encoding: .utf8).split(separator: "\n") {
+            let row = try decoder.decode(Row.self, from: Data(line.utf8))
+            guard row.split == split, row.j.count == Joint.allCases.count else { continue }
+            let joints = row.j.map { JointSample(Point(x: $0[0], y: $0[1]), confidence: 1) }
+            let pose = HandPose(chirality: row.hand == "left" ? .left : .right, joints: joints)
+            var session = Session()
+            _ = session.process(LandmarkFrame(t: 0, hands: [pose]))
+            guard let hand = session.lastFeatures?.hands.first, let vector = PoseFeatures.vector(hand) else { continue }
+            let label = poseClass(row.label)
+            if label == .none {
+                others.append(LabelledSample(features: vector, label: label))
+            } else {
+                gestures.append(LabelledSample(features: vector, label: label))
+            }
+        }
+        let cap = Int(Double(gestures.count) * noneRatio)
+        // Deterministic thinning: every k-th "none" sample.
+        let stride = max(1, others.count / max(cap, 1))
+        return gestures + others.enumerated().filter { $0.offset % stride == 0 }.prefix(cap).map(\.element)
+    }
+}

@@ -1,34 +1,70 @@
 {
-  "accuracy" : 0.9927,
-  "data" : "synthetic hand model, seed 1",
-  "heldOutSamples" : 3000,
-  "noGestureFalsePositiveRate" : 0.0034,
+  "accuracy" : 0.9919,
+  "data" : "synthetic hand model, seed 1 + HaGRID (CC BY-SA 4.0): 71960 train, 17960 held-out by subject",
+  "heldOutSamples" : 20960,
+  "noGestureFalsePositiveRate" : 0.0022,
   "oneShotRecall" : {
-    "shaka" : 0.9827,
-    "thumbsDown" : 0.9801,
-    "thumbsUp" : 0.9865
+    "shaka" : 0.9587,
+    "thumbsDown" : 0.974,
+    "thumbsUp" : 0.975
   },
   "perClass" : {
     "none" : {
-      "precision" : 0.9898,
-      "recall" : 0.9959,
-      "support" : 1461
+      "precision" : 0.9941,
+      "recall" : 0.9948,
+      "support" : 13421
     },
     "shaka" : {
-      "precision" : 0.9961,
-      "recall" : 0.9923,
-      "support" : 520
+      "precision" : 0.9924,
+      "recall" : 0.9813,
+      "support" : 2520
     },
     "thumbsDown" : {
-      "precision" : 0.998,
-      "recall" : 0.9841,
-      "support" : 502
+      "precision" : 0.9864,
+      "recall" : 0.9892,
+      "support" : 2502
     },
     "thumbsUp" : {
-      "precision" : 0.9923,
-      "recall" : 0.9923,
-      "support" : 517
+      "precision" : 0.985,
+      "recall" : 0.9897,
+      "support" : 2517
     }
   },
-  "trainSamples" : 16000
+  "subsets" : {
+    "hagrid" : {
+      "accuracy" : 0.9927,
+      "data" : "HaGRID held-out subjects",
+      "heldOutSamples" : 17960,
+      "noGestureFalsePositiveRate" : 0.0021,
+      "oneShotRecall" : {
+        "shaka" : 0.9675,
+        "thumbsDown" : 0.9775,
+        "thumbsUp" : 0.985
+      },
+      "perClass" : {
+        "none" : {
+          "precision" : 0.995,
+          "recall" : 0.9951,
+          "support" : 11960
+        },
+        "shaka" : {
+          "precision" : 0.9929,
+          "recall" : 0.9805,
+          "support" : 2000
+        },
+        "thumbsDown" : {
+          "precision" : 0.988,
+          "recall" : 0.9895,
+          "support" : 2000
+        },
+        "thumbsUp" : {
+          "precision" : 0.9832,
+          "recall" : 0.9935,
+          "support" : 2000
+        }
+      },
+      "trainSamples" : 87960
+    }
+  },
+  "trainSamples" : 87960
 }
