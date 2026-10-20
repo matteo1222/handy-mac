@@ -73,6 +73,8 @@ public struct AppStateSnapshot: Codable, Sendable, Equatable {
     /// The global stop hotkey, or nil when the system refused to register it.
     public var stopHotKey: String?
     public var camera: String
+    /// The app's own camera authorization (notDetermined, granted, denied, restricted).
+    public var cameraPermission: String?
     public var recording: String?
     public var perception: PerceptionStats?
     public var hud: HUDSnapshot?
@@ -87,8 +89,9 @@ public struct AppStateSnapshot: Codable, Sendable, Equatable {
         mode: Engine.Mode, version: String = BuildInfo.version, stopHotKey: String? = nil, camera: String = "off",
         recording: String? = nil, perception: PerceptionStats? = nil, hud: HUDSnapshot? = nil,
         accessibilityGranted: Bool? = nil, output: OutputStats? = nil, lastEvents: [TimedEvent] = [],
-        settings: EngineSettings? = nil
+        settings: EngineSettings? = nil, cameraPermission: String? = nil
     ) {
+        self.cameraPermission = cameraPermission
         self.output = output
         self.hud = hud
         self.accessibilityGranted = accessibilityGranted
@@ -141,11 +144,19 @@ public struct PerceptionStats: Codable, Sendable, Equatable {
     public var handsInLastFrame: Int
     public var idle: Bool
     public var brightness: Double
+    /// The last face reading's yaw in degrees ("none" when no face was found).
+    public var lastFace: String?
+    /// Frame-to-frame interval, to see the real capture rate.
+    public var frameInterval: Summary?
+    public var face: Summary?
 
     public init(
         frames: Int, inference: Summary, filterFeaturesEngine: Summary, handsInLastFrame: Int, idle: Bool,
-        brightness: Double
+        brightness: Double, lastFace: String? = nil, frameInterval: Summary? = nil, face: Summary? = nil
     ) {
+        self.lastFace = lastFace
+        self.frameInterval = frameInterval
+        self.face = face
         self.frames = frames
         self.inference = inference
         self.filterFeaturesEngine = filterFeaturesEngine

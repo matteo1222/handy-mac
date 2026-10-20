@@ -63,6 +63,9 @@ final class LiveTracking {
     @ObservationIgnored private var recordingOrigin: Double?
     @ObservationIgnored private var inference = RollingWindow()
     @ObservationIgnored private var pipeline = RollingWindow()
+    @ObservationIgnored private var intervals = RollingWindow()
+    @ObservationIgnored private var faceTimes = RollingWindow(capacity: 60)
+    @ObservationIgnored private var lastFace: FaceSample?
     @ObservationIgnored private var frameCount = 0
     @ObservationIgnored private var last: PerceptionFrame?
     @ObservationIgnored private var darkness = DarknessMonitor()
@@ -160,6 +163,11 @@ final class LiveTracking {
         let elapsed = start.duration(to: .now)
         pipeline.append(Double(elapsed.components.attoseconds) / 1e15 + Double(elapsed.components.seconds) * 1000)
         inference.append(frame.inferenceMilliseconds)
+        if let previous = last { intervals.append((frame.landmarks.t - previous.landmarks.t) * 1000) }
+        if let face = frame.landmarks.face {
+            lastFace = face
+            faceTimes.append(frame.faceMilliseconds)
+        }
         frameCount += 1
         last = frame
         observeBrightness(frame.brightness, at: frame.landmarks.t)
@@ -193,7 +201,9 @@ final class LiveTracking {
             frames: frameCount, inference: inference.summary.rounded(),
             filterFeaturesEngine: pipeline.summary.rounded(),
             handsInLastFrame: last.landmarks.hands.count, idle: last.idle,
-            brightness: (last.brightness * 1000).rounded() / 1000)
+            brightness: (last.brightness * 1000).rounded() / 1000,
+            lastFace: lastFace.map { $0.yaw.map { String(format: "%.0f°", $0) } ?? "none" },
+            frameInterval: intervals.summary.rounded(), face: faceTimes.summary.rounded())
     }
 
     // MARK: Recording

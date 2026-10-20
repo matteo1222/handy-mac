@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds the Handy executable with SwiftPM and assembles a signed menu-bar .app bundle.
 # Usage: scripts/package-app.sh [debug|release]
-# Env: APP_IDENTITY (Developer ID; ad-hoc signed when unset), OUT_DIR (default .build/app),
+# Env: APP_IDENTITY (Developer ID for releases), DEV_IDENTITY (debug builds; defaults to the keychain's
+#      first "Apple Development" identity, ad-hoc when there is none), OUT_DIR (default .build/app),
 #      SPARKLE_FEED_URL and SPARKLE_PUBLIC_KEY (release builds only; without them updates stay off)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -60,10 +61,19 @@ PLIST
 scripts/appintents-metadata.sh "$APP" "$CONF" >/dev/null
 
 xattr -cr "$APP"
+# A certificate-signed build keeps its camera and Accessibility grants across rebuilds. Ad-hoc code is
+# identified by its hash: naming only the bundle ID keeps the camera grant, but Accessibility still
+# compares the hash, so debug builds prefer an Apple Development certificate when the keychain has one.
+DEV_IDENTITY=${DEV_IDENTITY-$(security find-identity -p codesigning -v 2>/dev/null \
+  | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)}
+APP_REQUIREMENT=()
 if [[ -n "$APP_IDENTITY" ]]; then
   SIGN=(--force --timestamp --options runtime --sign "$APP_IDENTITY")
+elif [[ -n "$DEV_IDENTITY" ]]; then
+  SIGN=(--force --sign "$DEV_IDENTITY")
 else
   SIGN=(--force --sign -)
+  APP_REQUIREMENT=(-r='designated => identifier "dev.handy.Handy"')
 fi
 # Sign nested code inside-out: helpers and XPC services, then each framework, then the app.
 for framework in "$APP"/Contents/Frameworks/*.framework; do
@@ -76,5 +86,5 @@ for framework in "$APP"/Contents/Frameworks/*.framework; do
   done < <(find "$framework/Versions/Current" -maxdepth 1 -type f -perm -111 -print0 2>/dev/null)
   codesign "${SIGN[@]}" "$framework"
 done
-codesign "${SIGN[@]}" --entitlements Resources/Handy.entitlements "$APP"
+codesign "${SIGN[@]}" ${APP_REQUIREMENT[@]+"${APP_REQUIREMENT[@]}"} --entitlements Resources/Handy.entitlements "$APP"
 echo "$APP"

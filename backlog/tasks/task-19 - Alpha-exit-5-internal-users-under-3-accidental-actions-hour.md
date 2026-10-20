@@ -4,6 +4,7 @@ title: 'Alpha exit: 5 internal users under 3 accidental actions/hour'
 status: To Do
 assignee: []
 created_date: '2026-10-19 15:38'
+updated_date: '2026-10-19 18:39'
 labels:
   - ready-for-human
 milestone: m-1
@@ -35,3 +36,9 @@ The PRD gates the alpha on measured trust, not feature count.
 - [ ] #2 Accidental actions measured below 3 per hour of active use
 - [ ] #3 Misfires collected as landmark clips and added to the corpus
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Tooling ready (agent side): each user's Handy keeps counts-only usage (engaged time, actions by kind, oops) per day in usage.json; the menu shows today's minutes and accidental actions per hour and handyctl report prints the totals (accidental per hour = oops per engaged hour). scripts/collect-misfires.sh <participant> copies each user's oops landmark samples into corpus/misfires/. Running the alpha with 5 people is the remaining human work.
+<!-- SECTION:NOTES:END -->

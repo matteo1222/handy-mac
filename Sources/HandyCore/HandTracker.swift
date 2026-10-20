@@ -1,7 +1,8 @@
 /// Turns raw per-frame hand poses into tracked, filtered hands with stable identities.
 ///
 /// Quality gate: joints under `minJointConfidence` are dropped and hands with fewer than
-/// `minValidJoints` are rejected. Identity: each hand matches the nearest previous wrist.
+/// `minValidJoints` or fewer than two visible palm points are rejected. Identity: each hand matches
+/// the nearest previous wrist, observed or fitted from the knuckles when out of view.
 /// A hand missing for longer than `trackGrace` loses its track, and its filters start fresh.
 public struct HandTracker: Sendable {
     public struct Settings: Sendable, Hashable, Codable {
@@ -52,7 +53,7 @@ public struct HandTracker: Sendable {
         var next: [State] = []
         var output: [Track] = []
         for hand in gated {
-            guard let wrist = hand[.wrist]?.point else { continue }
+            guard let wrist = hand[.wrist]?.point ?? Self.palmFit(hand)?.wrist else { continue }
             var state: State
             if let index = nearest(to: wrist, in: unclaimed) {
                 state = unclaimed.remove(at: index)
@@ -89,13 +90,20 @@ public struct HandTracker: Sendable {
             gated[joint] = nil
         }
         let valid = gated.joints.compactMap { $0 }.count
-        guard valid >= settings.minValidJoints, gated[.wrist] != nil, gated[.middleMCP] != nil else { return nil }
+        guard valid >= settings.minValidJoints, Self.palmFit(gated) != nil else { return nil }
         return gated
     }
 
     /// The most recently seen track within reach, nearest first among equals. A track still being
     /// followed frame to frame wins over a stale one held through a dropout, even if the stale one
     /// is a little closer, so a fast-moving hand cannot be handed to an old identity.
+    /// The palm fitted to a hand's visible palm points (the wrist is often out of a laptop camera's view).
+    static func palmFit(_ hand: HandPose) -> PalmFit? {
+        var points: [Joint: Point] = [:]
+        for joint in PalmFit.model.keys { points[joint] = hand[joint]?.point }
+        return PalmFit(points, chirality: hand.chirality)
+    }
+
     private func nearest(to wrist: Point, in candidates: [State]) -> Int? {
         candidates.indices
             .filter { candidates[$0].wrist.distance(to: wrist) <= settings.maxWristJump }

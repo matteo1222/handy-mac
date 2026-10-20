@@ -2,6 +2,7 @@ import AppKit
 import HandyControl
 import HandyCore
 import HandyOutput
+import HandyPerception
 
 // MARK: handyctl
 
@@ -20,7 +21,7 @@ extension AppModel {
             accessibilityGranted: AccessibilityPermission.isGranted,
             output: OutputStats(posted: output.posted, refused: output.failed, blocked: output.isBlocked),
             lastEvents: recentEvents,
-            settings: session.engine.settings)
+            settings: session.engine.settings, cameraPermission: CameraPermission.current.rawValue)
     }
 
     func handle(_ request: ControlRequest) async -> ControlResponse {
@@ -31,6 +32,11 @@ extension AppModel {
             send(command)
             return ControlResponse(state: snapshot)
         case .screenshot(let target, let path):
+            if target == "debug-overlay" {
+                // The overlay only publishes frames while shown; let one live frame arrive first.
+                tracking.publishesDebugFrames = true
+                try? await Task.sleep(for: .milliseconds(400))
+            }
             return attempt("screenshot") { try Screenshots.render(target, model: self, to: URL(filePath: path)) }
         case .record(let on):
             return attempt("recording") { try tracking.setRecording(on) }

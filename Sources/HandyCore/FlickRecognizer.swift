@@ -79,7 +79,10 @@ public struct FlickRecognizer: Sendable, Equatable {
 
     /// Feed the pointer hand (or nil when absent); returns the direction that fires on this frame.
     public mutating func update(_ hand: HandFeatures?, at t: Double) -> Direction? {
-        guard let hand, Self.isPointing(hand), let indexTip = hand[.indexTip], let wrist = hand[.wrist] else {
+        guard let hand, Self.isPointing(hand), let indexTip = hand[.indexTip],
+            // A fitted wrist shifts as knuckles drop in and out, which would read as tip motion.
+            let wrist = hand.observed(.wrist)
+        else {
             reset()
             return nil
         }

@@ -55,11 +55,17 @@ public struct HandFeatures: Sendable, Hashable {
     public var palmFacing: Double
     /// Palm centroid velocity in normalised image units per second.
     public var velocity: Point
-    /// Filtered joints, for classifiers and gesture rules that need raw geometry.
+    /// Filtered joints, for classifiers and gesture rules that need raw geometry. Hidden palm
+    /// points (often the wrist, below the frame) are filled in from the palm fit.
     public var joints: [Point?]
     public var jointConfidence: [Double]
+    /// Joints in `joints` that were estimated from the palm fit rather than seen.
+    public var imputed: Set<Joint> = []
 
     public subscript(joint: Joint) -> Point? { joints[joint.rawValue] }
+
+    /// The joint only when the camera actually saw it.
+    public func observed(_ joint: Joint) -> Point? { imputed.contains(joint) ? nil : self[joint] }
 
     /// Fingers count as extended above this `reach` value.
     public static let extendedThreshold = 0.45
@@ -98,10 +104,15 @@ public struct FeatureExtractor: Sendable {
     }
 
     private mutating func features(for track: HandTracker.Track, at t: Double) -> HandFeatures? {
-        guard let wrist = track[.wrist], let middleMCP = track[.middleMCP] else { return nil }
-        let scale = max(wrist.distance(to: middleMCP), 1e-6)
-        let bases = [Joint.indexMCP, .middleMCP, .ringMCP, .littleMCP].compactMap { track[$0] }
-        let centroid = Point.mean([wrist] + bases)
+        var palmPoints: [Joint: Point] = [:]
+        for joint in PalmFit.model.keys { palmPoints[joint] = track[joint] }
+        guard let fit = PalmFit(palmPoints, chirality: track.chirality) else { return nil }
+        // Measured points win where visible; hidden palm points (often the wrist) come from the fit.
+        let (joints, imputed) = fit.filling(track.joints)
+        let wrist = track[.wrist] ?? fit.wrist
+        let scale = max(
+            track[.middleMCP].flatMap { mcp in track[.wrist].map { $0.distance(to: mcp) } } ?? fit.scale, 1e-6)
+        let centroid = fit.centroid
 
         var velocity = Point.zero
         if let last = lastCentroid[track.id], t > last.t {
@@ -109,6 +120,7 @@ public struct FeatureExtractor: Sendable {
         }
         lastCentroid[track.id] = (t, centroid)
 
+        func point(_ joint: Joint) -> Point? { joints[joint.rawValue] }
         func tip(_ joint: Joint) -> Point? {
             track.confidence[joint.rawValue] >= minTipConfidence ? track[joint] : nil
         }
@@ -116,7 +128,7 @@ public struct FeatureExtractor: Sendable {
             guard let thumb = tip(.thumbTip), let other = tip(finger) else { return nil }
             return thumb.distance(to: other) / scale
         }
-        let spread = track[.indexMCP].flatMap { index in track[.littleMCP].map { index.distance(to: $0) } }
+        let spread = point(.indexMCP).flatMap { index in point(.littleMCP).map { index.distance(to: $0) } }
 
         return HandFeatures(
             id: track.id,
@@ -125,12 +137,12 @@ public struct FeatureExtractor: Sendable {
             pinchIndex: pinch(.indexTip),
             pinchMiddle: pinch(.middleTip),
             reach: FingerValues { finger in
-                guard let base = track[finger.base], let end = track[finger.tip] else { return 0 }
+                guard let base = point(finger.base), let end = track[finger.tip] else { return 0 }
                 return (wrist.distance(to: end) - wrist.distance(to: base)) / scale
             },
             curl: FingerValues { finger in
-                let joints = finger.joints
-                guard let a = track[joints[0]], let b = track[joints[1]], let c = track[joints[3]] else {
+                let chain = finger.joints
+                guard let a = point(chain[0]), let b = point(chain[1]), let c = point(chain[3]) else {
                     return 180
                 }
                 return Self.angle(at: b, from: a, to: c)
@@ -138,8 +150,9 @@ public struct FeatureExtractor: Sendable {
             palmCentroid: centroid,
             palmFacing: (spread ?? 0) / scale,
             velocity: velocity,
-            joints: track.joints,
-            jointConfidence: track.confidence
+            joints: joints,
+            jointConfidence: track.confidence,
+            imputed: imputed
         )
     }
 

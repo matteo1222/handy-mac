@@ -32,6 +32,7 @@ enum Screenshots {
             "palette": { AnyView(PaletteView(layout: model.settings.palette.standard, highlighted: 2)) },
             "settings": { AnyView(SettingsView(model: model)) },
             "pointing-test": { AnyView(PointingTestView(model: PointingTestModel())) },
+            "debug-overlay": { AnyView(DebugOverlayView(tracking: model.tracking).frame(width: 640, height: 480)) },
             "corpus-recorder": {
                 AnyView(CorpusRecorderView(model: CorpusRecorderModel(begin: {}, end: {})))
             },

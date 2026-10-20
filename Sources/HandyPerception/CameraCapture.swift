@@ -12,6 +12,8 @@ public struct PerceptionFrame: Sendable {
     public var idle: Bool
     /// Mean luma 0...1, sampled for the too-dark check.
     public var brightness: Double
+    /// Milliseconds the face detector took on this frame (0 when it did not run).
+    public var faceMilliseconds: Double
 }
 
 public enum CameraEvent: Sendable, Equatable {
@@ -70,8 +72,11 @@ actor PerceptionWorker {
         throttle.record(handsSeen: !hands.isEmpty, at: t)
 
         var face: FaceSample?
+        var faceDuration = Duration.zero
         if let faceProvider, throttle.shouldDetectFace(at: t) {
+            let faceStart = ContinuousClock.now
             face = try? faceProvider.face(in: pixelBuffer)
+            faceDuration = faceStart.duration(to: .now)
         }
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
@@ -82,7 +87,9 @@ actor PerceptionWorker {
                 inferenceMilliseconds: Double(inference.components.attoseconds) / 1e15
                     + Double(inference.components.seconds) * 1000,
                 idle: throttle.isIdle(at: t),
-                brightness: Self.meanLuma(pixelBuffer)))
+                brightness: Self.meanLuma(pixelBuffer),
+                faceMilliseconds: Double(faceDuration.components.attoseconds) / 1e15
+                    + Double(faceDuration.components.seconds) * 1000))
     }
 
     /// Samples the Y plane of a bi-planar YUV buffer on a coarse grid.
