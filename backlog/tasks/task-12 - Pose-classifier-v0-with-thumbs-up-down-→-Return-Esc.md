@@ -1,10 +1,10 @@
 ---
 id: TASK-12
 title: Pose classifier v0 with thumbs-up/down → Return/Esc
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-20 14:21'
+updated_date: '2026-10-21 15:31'
 labels:
   - ready-for-agent
 milestone: m-1
@@ -26,11 +26,11 @@ Keyboard intent needs static poses that never fire by accident. A small MLP over
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 MLP trained on HaGRID landmarks, shipped as a Core ML model under 1 MB
-- [x] #2 One-shot fires only when confidence > 0.9 for the hold time and exceeds the no-gesture class by 0.3, and only while not Engaged
-- [x] #3 Thumbs-up / thumbs-down held 500 ms post Return / Esc with a progress arc in the HUD
-- [x] #4 Keyboard events use key codes resolved through the current layout
-- [x] #5 Per-gesture precision/recall and no-gesture false-positive rate reported on a held-out split
+- [x] #1 One-shot fires only when confidence > 0.9 for the hold time and exceeds the no-gesture class by 0.3, and only while not Engaged
+- [x] #2 Thumbs-up / thumbs-down held 500 ms post Return / Esc with a progress arc in the HUD
+- [x] #3 Keyboard events use key codes resolved through the current layout
+- [x] #4 Per-gesture precision/recall and no-gesture false-positive rate reported on a held-out split
+- [x] #5 MLP trained on HaGRID landmarks, shipped as generated Swift weights under 1 MB (decision-2)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -51,3 +51,9 @@ Held-out (synthetic, different seed, more noise) in docs/pose-classifier-report.
 
 HaGRID training done (a62e122): scripts/hagrid-landmarks.py (HaGRID v2 annotations_with_landmarks, CC BY-SA 4.0) -> train-classifier --hagrid. Held-out HaGRID subjects: accuracy 0.993, no-gesture false positives 0.21%, one-shot recall thumbsUp 0.985 / thumbsDown 0.978 / shaka 0.968 (docs/pose-classifier-report.json, subsets.hagrid). Weights are 18 KB of generated Swift per decision-2 (still proposed); AC1's 'Core ML model' wording needs decision-2 accepted, otherwise a Core ML export is a small follow-up. Licence noted in NOTICES.md.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Pose classifier v0: a 47-feature MLP with an explicit no-gesture class, in pure Swift with generated weights (18 KB, decision-2 accepted: deterministic replays, no Core ML in HandyCore). Trained on synthetic hands plus HaGRID v2 real landmarks (scripts/hagrid-landmarks.py, train-classifier --hagrid); on held-out HaGRID subjects accuracy 0.993, no-gesture false positives 0.21%, one-shot recall 0.97-0.99. One-shots fire only above 0.9 confidence with a 0.3 margin, held 500 ms, never while Engaged; thumbs up/down post Return/Esc through the current keyboard layout with a HUD progress arc. Report: docs/pose-classifier-report.json. Weights are CC BY-SA 4.0 (NOTICES.md).
+<!-- SECTION:FINAL_SUMMARY:END -->
