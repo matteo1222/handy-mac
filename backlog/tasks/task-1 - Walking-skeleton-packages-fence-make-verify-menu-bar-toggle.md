@@ -53,6 +53,8 @@ Dropped Tuist at the user's request: the app is a SwiftPM executable packaged by
 CI green on GitHub-hosted macos-26 (run 39449849356, main 08a619e): make verify passes in CI, and lefthook runs the fast subset pre-commit. The billing block was the private-repo Actions budget ($0, usage blocked); the repo is now public, so standard runners are free. Remaining: AC5 needs a physical press of the stop hotkey.
 
 AC5 verified live 2026-10-21: with Handy Watching (handyctl send start), a physical ⌃⌥⌘H press switched it to Off (modeChanged off at t=16.2), and the menu-bar toggle brings it back to Watching; menu toggle states also covered by MenuBarAndProblemTests.
+
+Correction to the AC5 note: the live evidence is the hotkey press (Off) followed by a return to Watching, which the user confirmed worked; MenuBarAndProblemTests covers the menu-bar icon and problem states, not the toggle itself.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
