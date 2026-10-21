@@ -1,11 +1,11 @@
 ---
 id: TASK-1
 title: 'Walking skeleton: packages, fence, make verify, menu-bar toggle'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-20 15:39'
+updated_date: '2026-10-21 15:27'
 labels:
   - ready-for-agent
 milestone: m-0
@@ -30,7 +30,7 @@ Handy is greenfield (decision-1), so nothing exists yet. Every later ticket need
 - [x] #2 A HandyCore import of AppKit, AVFoundation or Vision fails to compile; SwiftLint custom rules reject Date(), DispatchQueue, Task.sleep and CGEvent in HandyCore
 - [x] #3 make verify runs format, lint, build and tests; the same command runs in CI on a macOS runner and in a lefthook pre-commit (fast subset)
 - [x] #4 Every lint suppression must be listed in DEBT.md with a reason or CI fails
-- [ ] #5 Menu-bar item toggles Off/Watching; a global hotkey returns to Off from any state
+- [x] #5 Menu-bar item toggles Off/Watching; a global hotkey returns to Off from any state
 - [x] #6 handyctl doctor prints build, permission and version info as JSON and exits non-zero on failure
 <!-- AC:END -->
 
@@ -51,4 +51,12 @@ Handy is greenfield (decision-1), so nothing exists yet. Every later ticket need
 Dropped Tuist at the user's request: the app is a SwiftPM executable packaged by scripts/package-app.sh. Fence proven by scripts/prove-fence.sh (part of make verify). make verify green locally in ~11 s; lefthook installed and runs make verify-fast. Not yet proven: the GitHub Actions run (nothing pushed) and a physical ⌃⌥⌘H keypress (the terminal lacks Accessibility to synthesize it; handyctl state reports the hotkey registered and stop-from-every-mode is unit tested).
 
 CI green on GitHub-hosted macos-26 (run 39449849356, main 08a619e): make verify passes in CI, and lefthook runs the fast subset pre-commit. The billing block was the private-repo Actions budget ($0, usage blocked); the repo is now public, so standard runners are free. Remaining: AC5 needs a physical press of the stop hotkey.
+
+AC5 verified live 2026-10-21: with Handy Watching (handyctl send start), a physical ⌃⌥⌘H press switched it to Off (modeChanged off at t=16.2), and the menu-bar toggle brings it back to Watching; menu toggle states also covered by MenuBarAndProblemTests.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+SwiftPM-only walking skeleton: library packages plus the Handy executable packaged by scripts/package-app.sh (Swift 6, strict concurrency, warnings as errors); a HandyCore fence (build plugin + SwiftLint rules); DEBT.md ledger; make verify locally, in CI on GitHub-hosted macos-26 (green since the repo went public) and as a lefthook fast subset; menu-bar Off/Watching toggle and a global ⌃⌥⌘H stop hotkey (verified with a physical press); handyctl doctor.
+<!-- SECTION:FINAL_SUMMARY:END -->
