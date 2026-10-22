@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-22 00:19'
+updated_date: '2026-10-22 03:18'
 labels:
   - ready-for-human
 milestone: m-0
@@ -43,6 +43,8 @@ Core ML backend done (0a4d07e): CoreMLHandPoseProvider = MediaPipe palm detector
 Bench on identical real clips (4 Commons videos via scripts/fetch-videos.sh, each also dimmed + noise; docs/backend-report.json via scripts/backend-report.py): Core ML inference p50 1.1-2.2 ms / p95 3.4-5.2 ms vs Vision p50 6.1-7.3 / p95 7.8-10.5 (Vision live in the app measured p50 10-28 ms). Hand found: Vision higher on 2 clips (0.94-1.0 vs 0.87-1.0), Core ML much better on rock-paper-scissors (0.93 vs 0.75; dim 0.89 vs 0.47). Jitter mixed (Core ML lower on 2 of 4). Recommendation: Core ML as default (only backend inside the 10 ms budget with margin), Vision as fallback. Open before deciding: Core ML chirality on a live hand (MediaPipe's handedness convention vs our mirrored frames; emoji are inconclusive) and a live A/B in the app. AC4 needs the human decision.
 
 Decision (decision-3, 2026-10-22): Core ML (MediaPipe) is the default backend, Vision the automatic fallback; thumb-index pinch stays the default click (index dip remains a setting). Evidence: bench-perception with Handy stopped, Core ML p50 1.5 / p95 4.7 ms, Vision p50 2.6 / p95 2.8 ms (both inside 10 ms); real video clips Core ML p50 1.1-2.2 / p95 3.4-5.2 vs Vision 6.1-7.3 / 7.8-10.5; camera-format YUV frames paced at 30 fps Core ML p50 5.7-6.8 vs Vision 10-14 with a hand. Fixed on the way: Core ML handedness was inverted (agreed with Vision on 15% of matched hands, 85% after the flip, 94% on the single-signer clip), and the palm-detector decode now reads only the score column (no-hand frame in debug 21 -> 7.7 ms). Known gaps: inside the running app both backends sit at ~24 ms per idle frame (a contention floor, not the models; follow-up), and MediaPipe gives no per-joint confidence, so the low-confidence-tip guard does not fire on Core ML.
+
+Real-footage false actions, same two worst clips, with the plausibility and palm-side gates: Core ML royal-society 46/h, css-podcast 0/h; Vision 63/h and 0/h. Supports decision-3.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
