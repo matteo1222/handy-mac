@@ -63,16 +63,19 @@ public enum VideoLandmarks {
         var lastFace = -Double.infinity
         let clock = ContinuousClock()
 
-        while let sample = output.copyNextSampleBuffer() {
-            guard let source = CMSampleBufferGetImageBuffer(sample) else { continue }
+        // One autorelease pool per frame: decoded frames and Core Image output are IOSurface-backed and
+        // would otherwise pile up for the whole video.
+        while try autoreleasepool(invoking: { () throws -> Bool in
+            guard let sample = output.copyNextSampleBuffer() else { return false }
+            guard let source = CMSampleBufferGetImageBuffer(sample) else { return true }
             let time = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample))
             let start = origin ?? time
             origin = start
             let t = time - start
-            guard t - lastKept >= 1 / options.fps - 1e-4 else { continue }
+            guard t - lastKept >= 1 / options.fps - 1e-4 else { return true }
             lastKept = t
             guard let buffer = upright(source, transform: transform, mirror: options.mirror, context: context) else {
-                continue
+                return true
             }
             aspect = Double(CVPixelBufferGetWidth(buffer)) / Double(max(CVPixelBufferGetHeight(buffer), 1))
             var poses: [HandPose] = []
@@ -84,7 +87,8 @@ public enum VideoLandmarks {
                 face = try? faces.face(in: buffer)
             }
             frames.append(LandmarkFrame(t: (t * 1_000_000).rounded() / 1_000_000, hands: poses, face: face))
-        }
+            return true
+        }) {}
         if reader.status == .failed { throw Failure.readerFailed(reader.error?.localizedDescription ?? "unknown") }
         return Output(frames: frames, aspect: aspect, inferenceMilliseconds: timings)
     }

@@ -51,7 +51,8 @@ struct Video: AsyncParsableCommand {
                 backend: handBackend))
         var meta = ["aspect": String(result.aspect), "video": URL(filePath: input).lastPathComponent]
         meta["source"] = source
-        let stream = LandmarkStream(header: .init(source: "video", labels: labels, meta: meta), frames: result.frames)
+        let stream = LandmarkStream(
+            header: .init(source: "video", labels: labels, meta: meta), frames: result.frames.map(Self.compact))
         try stream.write(to: URL(filePath: output))
         try printJSON(
             VideoSummary(
@@ -59,6 +60,25 @@ struct Video: AsyncParsableCommand {
                 framesWithHands: result.frames.filter { !$0.hands.isEmpty }.count,
                 duration: result.frames.last?.t ?? 0,
                 inferenceMilliseconds: Summary(result.inferenceMilliseconds).rounded()))
+    }
+}
+
+extension Video {
+    /// Rounds joints to 0.0001 frame heights (under 0.1 px at 720p) and confidences to 0.001: the
+    /// rest is noise, and it would triple the size of a long corpus clip.
+    static func compact(_ frame: LandmarkFrame) -> LandmarkFrame {
+        func round(_ value: Double, _ places: Double) -> Double { (value * places).rounded() / places }
+        var frame = frame
+        for index in frame.hands.indices {
+            for joint in Joint.allCases {
+                guard var sample = frame.hands[index][joint] else { continue }
+                sample.point = Point(x: round(sample.point.x, 10_000), y: round(sample.point.y, 10_000))
+                sample.confidence = round(sample.confidence, 1000)
+                frame.hands[index][joint] = sample
+            }
+        }
+        if let yaw = frame.face?.yaw { frame.face = FaceSample(yaw: round(yaw, 1000)) }
+        return frame
     }
 }
 

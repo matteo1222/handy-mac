@@ -85,6 +85,12 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
     }
 
     public func hands(in pixelBuffer: CVPixelBuffer) throws -> [HandPose] {
+        // Core ML and Core Image hand back autoreleased buffers backed by IOSurfaces. A caller that
+        // loops without draining a pool (a long video) runs the Neural Engine out of surfaces.
+        try autoreleasepool { try track(pixelBuffer) }
+    }
+
+    private func track(_ pixelBuffer: CVPixelBuffer) throws -> [HandPose] {
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
         let frame = CIImage(cvPixelBuffer: pixelBuffer)
@@ -122,7 +128,7 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
         let output = try predict(detector, placed, key: "detections")
         // Read the score column first and decode only the rows that pass: converting all 2944 × 19
         // values every frame cost more than the model itself, most of all in debug builds.
-        let rows = Rows(output)
+        let rows = ModelRows(output)
         var candidates: [Detection] = []
         for row in 0..<rows.count {
             let score = Double(rows[row, rows.columns - 1])
@@ -267,38 +273,6 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
         return values
     }
 
-    /// Row and column access into a 2-D model output without copying it, honouring its strides.
-    struct Rows {
-        let count: Int
-        let columns: Int
-        private let rowStride: Int
-        private let columnStride: Int
-        private let read: (Int) -> Float
-
-        init(_ array: MLMultiArray) {
-            count = array.shape[0].intValue
-            columns = array.shape[1].intValue
-            rowStride = array.strides[0].intValue
-            columnStride = array.strides[1].intValue
-            let span = (count - 1) * rowStride + (columns - 1) * columnStride + 1
-            switch array.dataType {
-            case .float16:
-                let pointer = array.dataPointer.bindMemory(to: UInt16.self, capacity: span)
-                read = { Float(Float16(bitPattern: pointer[$0])) }
-            case .float32:
-                let pointer = array.dataPointer.bindMemory(to: Float.self, capacity: span)
-                read = { pointer[$0] }
-            default:
-                let columns = columns
-                read = { array[[NSNumber(value: $0 / columns), NSNumber(value: $0 % columns)]].floatValue }
-            }
-        }
-
-        subscript(row: Int, column: Int) -> Float {
-            read(row * rowStride + column * columnStride)
-        }
-    }
-
     static func bounds(_ region: Region) -> CGRect {
         CGRect(
             x: region.center.x - region.size / 2, y: region.center.y - region.size / 2, width: region.size,
@@ -310,5 +284,37 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
         guard !overlap.isNull else { return 0 }
         let shared = overlap.width * overlap.height
         return shared / (a.width * a.height + b.width * b.height - shared)
+    }
+}
+
+/// Row and column access into a 2-D model output without copying it, honouring its strides.
+struct ModelRows {
+    let count: Int
+    let columns: Int
+    private let rowStride: Int
+    private let columnStride: Int
+    private let read: (Int) -> Float
+
+    init(_ array: MLMultiArray) {
+        count = array.shape[0].intValue
+        columns = array.shape[1].intValue
+        rowStride = array.strides[0].intValue
+        columnStride = array.strides[1].intValue
+        let span = (count - 1) * rowStride + (columns - 1) * columnStride + 1
+        switch array.dataType {
+        case .float16:
+            let pointer = array.dataPointer.bindMemory(to: UInt16.self, capacity: span)
+            read = { Float(Float16(bitPattern: pointer[$0])) }
+        case .float32:
+            let pointer = array.dataPointer.bindMemory(to: Float.self, capacity: span)
+            read = { pointer[$0] }
+        default:
+            let columns = columns
+            read = { array[[NSNumber(value: $0 / columns), NSNumber(value: $0 % columns)]].floatValue }
+        }
+    }
+
+    subscript(row: Int, column: Int) -> Float {
+        read(row * rowStride + column * columnStride)
     }
 }

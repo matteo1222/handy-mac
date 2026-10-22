@@ -83,3 +83,24 @@ private func clip(_ script: String, fps: Double = 30) throws -> Clip {
     #expect(reaches[5] < 0, "then a fist")
     #expect(reaches[8] > 0.3, "then relaxed again")
 }
+
+/// A hand whose finger reaches several hand lengths is a tracker's invention, not a hand: it is
+/// dropped before the engine sees it, so it can never engage or click.
+@Test func handsWithImpossibleFingersAreDropped() throws {
+    let frames = Synthesizer.render(try clip("openPalm:300ms"))
+    var session = Session()
+    for frame in frames { _ = session.process(frame) }
+    let open = try #require(session.lastFeatures?.hands.first)
+    #expect(FeatureExtractor().isPlausible(open))
+
+    var stretched = Session()
+    for var frame in frames {
+        for index in frame.hands.indices {
+            guard let mcp = frame.hands[index][.middleMCP], var tip = frame.hands[index][.middleTip] else { continue }
+            tip.point = mcp.point + (tip.point - mcp.point) * 6
+            frame.hands[index][.middleTip] = tip
+        }
+        _ = stretched.process(frame)
+    }
+    #expect(stretched.lastFeatures?.hands.isEmpty == true)
+}

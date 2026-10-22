@@ -1,23 +1,32 @@
 {
   "corpus" : [
-    "synthetic no-gesture, 2.0 h"
+    "synthetic no-gesture, 2.0 h",
+    "corpus\/public\/css-podcast-090.lmkz",
+    "corpus\/public\/fbi-podcast.lmkz",
+    "corpus\/public\/glam-wiki-call.lmkz",
+    "corpus\/public\/royal-society-interview.lmkz",
+    "corpus\/public\/sopa-wiki-podcast-1.lmkz",
+    "corpus\/public\/teacher-interview.lmkz"
   ],
   "falseActions" : {
-    "engage" : 1,
-    "flick.down" : 1
+    "click" : 1,
+    "drag" : 1,
+    "engage" : 8,
+    "flick.down" : 1,
+    "oneShot.thumbsUp" : 2
   },
-  "falseActionsPerHour" : 0.993,
+  "falseActionsPerHour" : 2.407,
   "gestureRecall" : {
 
   },
   "jitterPoints" : 0,
   "lagMilliseconds" : 55.7,
-  "noGestureHours" : 2.013,
+  "noGestureHours" : 5.402,
   "processingMicroseconds" : {
-    "count" : 217444,
-    "max" : 40.2,
-    "mean" : 3.5,
-    "p50" : 2.9,
-    "p95" : 6.5
+    "count" : 583405,
+    "max" : 1209.5,
+    "mean" : 4.1,
+    "p50" : 4.8,
+    "p95" : 11
   }
 }

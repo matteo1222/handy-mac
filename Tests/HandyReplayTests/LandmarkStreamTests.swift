@@ -56,3 +56,17 @@ func fixture(_ path: String) throws -> URL {
         return true
     }
 }
+
+@Test func compressedStreamsRoundTrip() throws {
+    let clip = Synthesizer.render(Clip(hands: [try Clip.parseHand("openPalm:1s", chirality: .right)]))
+    let stream = LandmarkStream(header: .init(source: "synth"), frames: clip)
+    let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let plain = folder.appending(path: "clip.lmk")
+    let packed = folder.appending(path: "clip.lmkz")
+    try stream.write(to: plain)
+    try stream.write(to: packed)
+    #expect(try LandmarkStream(contentsOf: packed) == LandmarkStream(contentsOf: plain))
+    #expect(try Data(contentsOf: packed).count < Data(contentsOf: plain).count / 3)
+}

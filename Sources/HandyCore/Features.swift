@@ -51,7 +51,8 @@ public struct HandFeatures: Sendable, Hashable {
     public var curl: FingerValues
     /// Mean of the wrist and the four finger MCPs.
     public var palmCentroid: Point
-    /// Index MCP to little MCP / scale. About 0.7 facing the camera, near 0 side-on.
+    /// Index MCP to little MCP / scale. About 0.7 with the palm toward the camera, near 0 side-on,
+    /// and negative when the back of the hand faces the camera (a hand resting flat on a leg or desk).
     public var palmFacing: Double
     /// Palm centroid velocity in normalised image units per second.
     public var velocity: Point
@@ -89,6 +90,11 @@ public struct FrameFeatures: Sendable, Hashable {
 public struct FeatureExtractor: Sendable {
     /// A pinch is never inferred from a thumb or index tip below this confidence.
     public var minTipConfidence = 0.5
+    /// Hands whose fingers reach farther than this (in hand scales) are not real hands: a straight
+    /// finger reaches 0.7 to 1.0, and real tracking stays under 1.4 at the 99th percentile. A
+    /// backend that invents a hand from a partly visible one (MediaPipe at a frame edge) reaches 2 to
+    /// 7, and those hands opened palms and clicked on their own.
+    public var maxReach = 1.5
     private var lastCentroid: [Int: (t: Double, point: Point)] = [:]
 
     public init() {}
@@ -97,8 +103,25 @@ public struct FeatureExtractor: Sendable {
         lastCentroid = [:]
     }
 
+    /// +1 when the palm faces the camera, -1 when the back of the hand does. Seen palm-first in the
+    /// mirrored image, a right hand's index knuckle and little knuckle turn one way around the wrist;
+    /// seen from the back, the other way. Rotation does not change the sign.
+    static func palmSide(wrist: Point, joints: [Point?], chirality: Chirality) -> Double {
+        guard let index = joints[Joint.indexMCP.rawValue], let little = joints[Joint.littleMCP.rawValue] else {
+            return 1
+        }
+        let a = index - wrist
+        let b = little - wrist
+        let turn: Double = a.x * b.y - a.y * b.x > 0 ? 1 : -1
+        return chirality == .right ? turn : -turn
+    }
+
+    public func isPlausible(_ hand: HandFeatures) -> Bool {
+        [Finger.index, .middle, .ring, .little].allSatisfy { hand.reach[$0] <= maxReach }
+    }
+
     public mutating func features(for tracks: [HandTracker.Track], at t: Double) -> [HandFeatures] {
-        let result = tracks.compactMap { features(for: $0, at: t) }
+        let result = tracks.compactMap { features(for: $0, at: t) }.filter(isPlausible)
         lastCentroid = lastCentroid.filter { _, last in t - last.t < 0.5 }
         return result
     }
@@ -148,7 +171,7 @@ public struct FeatureExtractor: Sendable {
                 return Self.angle(at: b, from: a, to: c)
             },
             palmCentroid: centroid,
-            palmFacing: (spread ?? 0) / scale,
+            palmFacing: (spread ?? 0) / scale * Self.palmSide(wrist: wrist, joints: joints, chirality: track.chirality),
             velocity: velocity,
             joints: joints,
             jointConfidence: track.confidence,

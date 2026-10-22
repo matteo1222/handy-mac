@@ -41,10 +41,15 @@ struct BenchCorpus: ParsableCommand {
         }
         if chunks > 0 { sources.append("synthetic no-gesture, \(syntheticHours) h") }
         for folder in corpus {
+            // Name clips by the folder as given (corpus/public/x.lmkz), so the baseline reads the same
+            // on every machine and holds no local paths.
+            let root = URL(filePath: folder).standardizedFileURL.path(percentEncoded: false)
             for url in try lmkFiles(in: folder) {
                 let stream = try LandmarkStream(contentsOf: url)
                 accumulator.run(frames: { stream.frames.forEach($0) }, labels: stream.header.labels)
-                sources.append(url.path(percentEncoded: false))
+                let path = url.standardizedFileURL.path(percentEncoded: false)
+                let relative = path.hasPrefix(root) ? String(path.dropFirst(root.count).trimmingPrefix("/")) : path
+                sources.append((folder as NSString).appendingPathComponent(relative))
             }
         }
         let hours = accumulator.noGestureSeconds / 3600
@@ -111,7 +116,8 @@ struct BenchCorpus: ParsableCommand {
     func lmkFiles(in folder: String) throws -> [URL] {
         let root = URL(filePath: folder)
         guard let walker = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil) else { return [] }
-        return walker.compactMap { $0 as? URL }.filter { $0.pathExtension == "lmk" }.sorted { $0.path() < $1.path() }
+        return walker.compactMap { $0 as? URL }.filter { LandmarkStream.fileExtensions.contains($0.pathExtension) }
+            .sorted { $0.path() < $1.path() }
     }
 }
 

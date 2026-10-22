@@ -103,9 +103,16 @@ extension LandmarkStream {
         self.init(header: header, frames: frames)
     }
 
+    /// Reads a `.lmk` file, or a `.lmkz` file (the same lines, LZFSE-compressed) for large corpora.
     public init(contentsOf url: URL) throws {
-        try self.init(data: try Data(contentsOf: url))
+        let data = try Data(contentsOf: url)
+        try self.init(data: Self.isCompressed(url) ? try (data as NSData).decompressed(using: .lzfse) as Data : data)
     }
+
+    /// The file extensions a landmark stream can have.
+    public static let fileExtensions: Set<String> = ["lmk", "lmkz"]
+
+    static func isCompressed(_ url: URL) -> Bool { url.pathExtension == "lmkz" }
 
     public func encoded() throws -> Data {
         var data = try Self.lineEncoder.encode(header)
@@ -117,8 +124,11 @@ extension LandmarkStream {
         return data
     }
 
+    /// Writes `.lmk`, or LZFSE-compressed when the path ends in `.lmkz`.
     public func write(to url: URL) throws {
-        try encoded().write(to: url, options: .atomic)
+        let data = try encoded()
+        try (Self.isCompressed(url) ? try (data as NSData).compressed(using: .lzfse) as Data : data)
+            .write(to: url, options: .atomic)
     }
 
     static var lineEncoder: JSONEncoder {
