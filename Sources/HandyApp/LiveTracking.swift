@@ -71,8 +71,8 @@ final class LiveTracking {
     @ObservationIgnored private var darkness = DarknessMonitor()
     @ObservationIgnored private var liveName = "camera"
     @ObservationIgnored private var backendName: String?
-    /// Keeps App Nap from throttling the tracking loop: a menu-bar app with no window is otherwise
-    /// treated as idle, which made inference about ten times slower than the same code in a test.
+    /// Keeps App Nap from throttling the tracking loop while the camera runs: a menu-bar app with no
+    /// window otherwise counts as idle to the system.
     @ObservationIgnored private var trackingActivity: (any NSObjectProtocol)?
     @ObservationIgnored private let onFrame: (LandmarkFrame) -> Void
     @ObservationIgnored private let onChange: () -> Void
