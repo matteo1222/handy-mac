@@ -120,26 +120,26 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
         let placed = frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
             .transformed(by: CGAffineTransform(translationX: padX, y: padY))
         let output = try predict(detector, placed, key: "detections")
-        let rows = output.shape[0].intValue
-        let columns = output.shape[1].intValue
-        let values = Self.floats(output)
+        // Read the score column first and decode only the rows that pass: converting all 2944 × 19
+        // values every frame cost more than the model itself, most of all in debug builds.
+        let rows = Rows(output)
         var candidates: [Detection] = []
-        for row in 0..<rows {
-            let base = row * columns
-            let score = Double(values[base + columns - 1])
+        for row in 0..<rows.count {
+            let score = Double(rows[row, rows.columns - 1])
             guard score >= 0.5 else { continue }
+            func value(_ column: Int) -> Float { rows[row, column] }
             // Normalised square coordinates (origin top-left) to frame pixels.
             func pixel(_ x: Float, _ y: Float) -> CGPoint {
                 CGPoint(
                     x: (Double(x) * Double(Self.side) - padX) / scale, y: (Double(y) * Double(Self.side) - padY) / scale
                 )
             }
-            let topLeft = pixel(values[base + 1], values[base])
-            let bottomRight = pixel(values[base + 3], values[base + 2])
+            let topLeft = pixel(value(1), value(0))
+            let bottomRight = pixel(value(3), value(2))
             let box = CGRect(
                 x: topLeft.x, y: topLeft.y, width: bottomRight.x - topLeft.x, height: bottomRight.y - topLeft.y)
-            let wrist = pixel(values[base + 4], values[base + 5])
-            let middle = pixel(values[base + 8], values[base + 9])
+            let wrist = pixel(value(4), value(5))
+            let middle = pixel(value(8), value(9))
             // MediaPipe's palm-to-hand rect: shift half a box toward the fingers, grow 2.6×.
             let rotation = atan2(wrist.y - middle.y, wrist.x - middle.x) - .pi / 2
             let size = box.width * 2.6
@@ -183,8 +183,10 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
                     normalizedX: Double(pixel.x) / Double(width), normalizedY: 1 - Double(pixel.y) / Double(height)),
                 confidence: presence)
         }
-        // MediaPipe's handedness assumes a mirrored (selfie) image, which is what the camera path gives it.
-        let chirality: Chirality = handedness >= 0.5 ? .right : .left
+        // On our mirrored frames the score reads high for the user's left hand: read the other way, the
+        // labels disagreed with Vision's (checked against a live hand) on 85% of the hands both found
+        // in the same video frames.
+        let chirality: Chirality = handedness >= 0.5 ? .left : .right
         return (HandPose(chirality: chirality, joints: Self.ordered(joints)), pixels)
     }
 
@@ -263,6 +265,38 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
             values[flat] = read(offset)
         }
         return values
+    }
+
+    /// Row and column access into a 2-D model output without copying it, honouring its strides.
+    struct Rows {
+        let count: Int
+        let columns: Int
+        private let rowStride: Int
+        private let columnStride: Int
+        private let read: (Int) -> Float
+
+        init(_ array: MLMultiArray) {
+            count = array.shape[0].intValue
+            columns = array.shape[1].intValue
+            rowStride = array.strides[0].intValue
+            columnStride = array.strides[1].intValue
+            let span = (count - 1) * rowStride + (columns - 1) * columnStride + 1
+            switch array.dataType {
+            case .float16:
+                let pointer = array.dataPointer.bindMemory(to: UInt16.self, capacity: span)
+                read = { Float(Float16(bitPattern: pointer[$0])) }
+            case .float32:
+                let pointer = array.dataPointer.bindMemory(to: Float.self, capacity: span)
+                read = { pointer[$0] }
+            default:
+                let columns = columns
+                read = { array[[NSNumber(value: $0 / columns), NSNumber(value: $0 % columns)]].floatValue }
+            }
+        }
+
+        subscript(row: Int, column: Int) -> Float {
+            read(row * rowStride + column * columnStride)
+        }
     }
 
     static func bounds(_ region: Region) -> CGRect {

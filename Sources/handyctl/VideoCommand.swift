@@ -22,7 +22,7 @@ struct Video: AsyncParsableCommand {
     var mirror = true
 
     @Option(help: "Hand-pose backend: vision or coreml.")
-    var backend = "vision"
+    var backend = HandBackend.standard.rawValue
 
     @Option(help: "Frames per second to process.")
     var fps = 30.0

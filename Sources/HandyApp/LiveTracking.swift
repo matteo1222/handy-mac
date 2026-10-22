@@ -70,6 +70,10 @@ final class LiveTracking {
     @ObservationIgnored private var last: PerceptionFrame?
     @ObservationIgnored private var darkness = DarknessMonitor()
     @ObservationIgnored private var liveName = "camera"
+    @ObservationIgnored private var backendName: String?
+    /// Keeps App Nap from throttling the tracking loop: a menu-bar app with no window is otherwise
+    /// treated as idle, which made inference about ten times slower than the same code in a test.
+    @ObservationIgnored private var trackingActivity: (any NSObjectProtocol)?
     @ObservationIgnored private let onFrame: (LandmarkFrame) -> Void
     @ObservationIgnored private let onChange: () -> Void
     private static let log = Logger(subsystem: "dev.handy", category: "tracking")
@@ -111,8 +115,12 @@ final class LiveTracking {
     }
 
     private func startCapture(deviceID: String?) {
-        let capture = CameraCapture(hands: HandBackend.preferred.makeProvider())
+        let provider = HandBackend.preferred.makeProvider()
+        backendName = provider.name
+        let capture = CameraCapture(hands: provider)
         self.capture = capture
+        trackingActivity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated, .latencyCritical], reason: "Tracking hands from the camera")
         camera = .starting
         frameTask = Task { [weak self] in
             for await frame in capture.frames { self?.handle(frame) }
@@ -128,6 +136,8 @@ final class LiveTracking {
         permissionTask = nil
         capture?.stop()
         capture = nil
+        if let trackingActivity { ProcessInfo.processInfo.endActivity(trackingActivity) }
+        trackingActivity = nil
         frameTask?.cancel()
         eventTask?.cancel()
         frameTask = nil
@@ -203,7 +213,7 @@ final class LiveTracking {
             handsInLastFrame: last.landmarks.hands.count, idle: last.idle,
             brightness: (last.brightness * 1000).rounded() / 1000,
             lastFace: lastFace.map { $0.yaw.map { String(format: "%.0f°", $0) } ?? "none" },
-            frameInterval: intervals.summary.rounded(), face: faceTimes.summary.rounded())
+            frameInterval: intervals.summary.rounded(), face: faceTimes.summary.rounded(), backend: backendName)
     }
 
     // MARK: Recording

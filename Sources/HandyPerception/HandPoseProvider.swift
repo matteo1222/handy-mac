@@ -37,9 +37,12 @@ public enum HandBackend: String, Sendable, CaseIterable {
     case vision
     case coreml
 
-    /// The backend named by the `handBackend` user default, Vision when unset or unknown.
+    /// The default backend: Core ML is the one inside the 10 ms inference budget (decision-3).
+    public static let standard = HandBackend.coreml
+
+    /// The backend named by the `handBackend` user default, the standard one when unset or unknown.
     public static var preferred: HandBackend {
-        UserDefaults.standard.string(forKey: "handBackend").flatMap(HandBackend.init(rawValue:)) ?? .vision
+        UserDefaults.standard.string(forKey: "handBackend").flatMap(HandBackend.init(rawValue:)) ?? standard
     }
 
     /// A fresh provider; Core ML falls back to Vision if its models cannot load.

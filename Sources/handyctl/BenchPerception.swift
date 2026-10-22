@@ -17,7 +17,7 @@ struct BenchPerception: ParsableCommand {
     )
 
     @Option(help: "Hand-pose backend: vision or coreml.")
-    var backend = "vision"
+    var backend = HandBackend.standard.rawValue
 
     @Option(help: "Inference iterations.")
     var iterations = 200

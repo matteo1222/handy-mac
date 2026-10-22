@@ -149,11 +149,15 @@ public struct PerceptionStats: Codable, Sendable, Equatable {
     /// Frame-to-frame interval, to see the real capture rate.
     public var frameInterval: Summary?
     public var face: Summary?
+    /// The hand-pose backend actually running ("vision" or "coreml").
+    public var backend: String?
 
     public init(
         frames: Int, inference: Summary, filterFeaturesEngine: Summary, handsInLastFrame: Int, idle: Bool,
-        brightness: Double, lastFace: String? = nil, frameInterval: Summary? = nil, face: Summary? = nil
+        brightness: Double, lastFace: String? = nil, frameInterval: Summary? = nil, face: Summary? = nil,
+        backend: String? = nil
     ) {
+        self.backend = backend
         self.lastFace = lastFace
         self.frameInterval = frameInterval
         self.face = face

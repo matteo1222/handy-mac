@@ -36,7 +36,7 @@ Perception runs left to right on a background queue; only the gesture engine dec
 ### Perception pipeline
 
 1. **Capture.** `AVCaptureSession`, 1280×720 at 30 fps (60 when the camera offers it), `alwaysDiscardsLateVideoFrames = true`, frames mirrored. Throttle to 10 fps when no hand has been seen for 5 s.
-2. **Hand pose.** `protocol HandPoseProvider { func process(_ frame: CVPixelBuffer, at t: TimeInterval) -> [HandObservation] }`. Backend A: `VNDetectHumanHandPoseRequest`, `maximumHandCount = 2`. Backend B: MediaPipe hand landmarker converted to Core ML with frame-to-frame ROI tracking (the fasthands approach). The Week 1–3 spike picks the default.
+2. **Hand pose.** `protocol HandPoseProvider { func process(_ frame: CVPixelBuffer, at t: TimeInterval) -> [HandObservation] }`. Backend A: `VNDetectHumanHandPoseRequest`, `maximumHandCount = 2`. Backend B: MediaPipe hand landmarker converted to Core ML with frame-to-frame ROI tracking (the fasthands approach). Backend B is the default, with Backend A as the fallback (decision-3, from the TASK-4 spike).
 3. **Quality gate.** Drop joints with confidence < 0.3; reject a hand with < 15 valid joints; never infer a click from a low-confidence thumb or index tip.
 4. **Identity.** Match hands across frames by nearest wrist; use reported chirality, flipped for the mirrored image.
 5. **Filter.** 1€ filter per joint and axis; a separate 1€ filter on the cursor source. Tune with the 2-step procedure (min cutoff first, then beta) and store values per preset; reset all filters on track loss.
@@ -164,7 +164,7 @@ Latency hides by prediction: once measured latency is stable, extrapolate the fi
 
 - **Language:** Swift 6 language mode, complete strict concurrency, warnings as errors, typed throws in HandyCore.
 - **UI:** SwiftUI for settings and onboarding; AppKit for the HUD panel and menu bar; `@Observable` models (no TCA — the hard logic is already a pure reducer).
-- **Perception:** Vision first; Core ML (converted MediaPipe) as a second adapter.
+- **Perception:** Core ML (converted MediaPipe) by default; Vision as the fallback adapter.
 - **Tests:** Swift Testing; replay tests on recorded landmarks; snapshot tests for HUD and settings views.
 - **Build:** SwiftPM only, no Xcode project and no Tuist. The app is a SwiftPM executable target (`Handy`); `scripts/package-app.sh` assembles, signs and (with a Developer ID) hardens the `.app` bundle. `make verify` is the single entry point for humans, agents and CI.
 - **Ship:** Developer ID + notarization in GitHub Actions on macOS runners; Sparkle updates.
@@ -251,7 +251,7 @@ The best index is Paul Hudson's [Swift-Agent-Skills](https://github.com/twostraw
 
 ### Open questions
 
-- [ ] Click gesture: thumb–index pinch (Vision Pro style) or index-finger dip (Pawvis style) as the default?
+- [x] Click gesture: thumb–index pinch is the default; index-finger dip is a setting (decision-3).
 - [ ] Is Handy a personal tool or a public product? It changes how much we invest in onboarding, telemetry and support.
 - [ ] Minimum macOS: 14 (wider reach, `VNDetectHumanHandPoseRequest`) or 15 (Swift-native Vision API)?
 - [ ] Should the command palette be gesture-only or also open from a hotkey for mixed keyboard use?
