@@ -15,5 +15,10 @@
   - "Interview on extreme weather with physical geographer Hannah Cloke – The Royal Society", CC BY 3.0
   - "Inside the FBI Podcast – Top Ten Fugitive Yulan Adonay Archaga Carias", public domain
   - "Interview with a Teacher - Glen Caruso", CC0
+  - "Speed typing with dvorak", CC0
+  - "Building a keyboard into an Altoids tin", CC BY 3.0
+  - "Brewing Coffee with Moka Alessi and Peugeot Bresil Mill - ASMR Coffee Making", CC BY 3.0
+  - "Korg Grandstage keyboard demo", CC BY 4.0
+  - "Tea Party 1952", public domain
 - **Sign-language test clip** (`Tests/HandyReplayTests/Fixtures/scenarios/realHandsSignAlphabet.lmk`):
   from "Alphabets - Ghanaian Sign Language" on Wikimedia Commons, CC0.

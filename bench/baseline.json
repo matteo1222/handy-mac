@@ -1,32 +1,39 @@
 {
   "corpus" : [
     "synthetic no-gesture, 2.0 h",
+    "corpus\/public\/altoids-keyboard-build.lmkz",
+    "corpus\/public\/brewing-coffee.lmkz",
     "corpus\/public\/css-podcast-090.lmkz",
     "corpus\/public\/fbi-podcast.lmkz",
     "corpus\/public\/glam-wiki-call.lmkz",
+    "corpus\/public\/piano-keyboard-demo.lmkz",
     "corpus\/public\/royal-society-interview.lmkz",
     "corpus\/public\/sopa-wiki-podcast-1.lmkz",
+    "corpus\/public\/speed-typing.lmkz",
+    "corpus\/public\/tea-party-1952.lmkz",
     "corpus\/public\/teacher-interview.lmkz"
   ],
   "falseActions" : {
     "click" : 1,
-    "drag" : 1,
-    "engage" : 8,
+    "drag" : 2,
+    "engage" : 10,
     "flick.down" : 1,
-    "oneShot.thumbsUp" : 2
+    "oneShot.thumbsDown" : 1,
+    "oneShot.thumbsUp" : 2,
+    "zoom" : 1
   },
-  "falseActionsPerHour" : 2.407,
+  "falseActionsPerHour" : 3.07,
   "gestureRecall" : {
 
   },
   "jitterPoints" : 0,
   "lagMilliseconds" : 55.7,
-  "noGestureHours" : 5.402,
+  "noGestureHours" : 5.863,
   "processingMicroseconds" : {
-    "count" : 583405,
-    "max" : 1209.5,
-    "mean" : 4.1,
-    "p50" : 4.8,
-    "p95" : 11
+    "count" : 633234,
+    "max" : 70.8,
+    "mean" : 3.7,
+    "p50" : 4.5,
+    "p95" : 10
   }
 }

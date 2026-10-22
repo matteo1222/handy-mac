@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the public no-gesture corpus: openly licensed Wikimedia Commons videos of people on video
-# calls, podcasts and interviews (talking with their hands, typing, drinking), reduced to landmark
-# streams in corpus/public/*.lmkz. The videos stay in .build/corpus-videos and are never committed.
+# calls, podcasts and interviews, typing, building things, making coffee, playing a keyboard and
+# drinking tea, reduced to landmark streams in corpus/public/*.lmkz. The videos stay in .build/corpus-videos and are never committed.
 # Needs curl and ffmpeg. Usage: scripts/fetch-corpus.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -18,6 +18,11 @@ CLIPS=(
   "fbi-podcast|Public domain|transcoded/7/70/Inside_the_FBI_Podcast_%E2%80%93_Top_Ten_Fugitive_Yulan_Adonay_Archaga_Carias.webm/Inside_the_FBI_Podcast_%E2%80%93_Top_Ten_Fugitive_Yulan_Adonay_Archaga_Carias.webm.720p.vp9.webm|File:Inside_the_FBI_Podcast_–_Top_Ten_Fugitive_Yulan_Adonay_Archaga_Carias.webm"
   "royal-society-interview|CC BY 3.0|transcoded/9/99/Interview_on_extreme_weather_with_physical_geographer_Hannah_Cloke_%E2%80%93_The_Royal_Society.webm/Interview_on_extreme_weather_with_physical_geographer_Hannah_Cloke_%E2%80%93_The_Royal_Society.webm.720p.vp9.webm|File:Interview_on_extreme_weather_with_physical_geographer_Hannah_Cloke_–_The_Royal_Society.webm"
   "teacher-interview|CC0|transcoded/d/d1/Interview_with_a_Teacher_-_Glen_Caruso.webm/Interview_with_a_Teacher_-_Glen_Caruso.webm.720p.vp9.webm|File:Interview_with_a_Teacher_-_Glen_Caruso.webm"
+  "speed-typing|CC0|a/a3/Speed_typing_with_dvorak.webm|File:Speed_typing_with_dvorak.webm"
+  "altoids-keyboard-build|CC BY 3.0|1/15/Building_a_keyboard_into_an_Altoids_tin.webm|File:Building_a_keyboard_into_an_Altoids_tin.webm"
+  "brewing-coffee|CC BY 3.0|c/c5/Brewing_Coffee_with_Moka_Alessi_and_Peugeot_Bresil_Mill_-_ASMR_Coffee_Making.webm|File:Brewing_Coffee_with_Moka_Alessi_and_Peugeot_Bresil_Mill_-_ASMR_Coffee_Making.webm"
+  "piano-keyboard-demo|CC BY 4.0|e/ed/Korg_Grandstage_keyboard_demo.ogv|File:Korg_Grandstage_keyboard_demo.ogv"
+  "tea-party-1952|Public domain|4/4b/Tea_Party_1952.ogv|File:Tea_Party_1952.ogv"
 )
 
 swift build -c release -q --product handyctl
