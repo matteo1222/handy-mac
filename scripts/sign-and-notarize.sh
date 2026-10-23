@@ -21,7 +21,15 @@ ZIP=.build/release-app/Handy-$MARKETING_VERSION.zip
 
 codesign --verify --deep --strict --verbose=2 "$APP"
 ditto -c -k --keepParent "$APP" "$ZIP"
-xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+# notarytool exits 0 even when Apple rejects the archive, so read the status and print Apple's log.
+RESULT=$(xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json)
+STATUS=$(plutil -extract status raw - <<<"$RESULT")
+if [[ "$STATUS" != "Accepted" ]]; then
+  ID=$(plutil -extract id raw - <<<"$RESULT")
+  echo "notarization $STATUS:" >&2
+  xcrun notarytool log "$ID" --keychain-profile "$NOTARY_PROFILE" >&2
+  exit 1
+fi
 xcrun stapler staple "$APP"
 xcrun stapler validate "$APP"
 spctl --assess --type execute --verbose "$APP"

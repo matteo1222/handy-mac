@@ -83,7 +83,9 @@ for framework in "$APP"/Contents/Frameworks/*.framework; do
   done < <(find "$framework" \( -name "*.xpc" -o -name "*.app" \) -prune -print0)
   while IFS= read -r -d '' binary; do
     codesign "${SIGN[@]}" "$binary"
-  done < <(find "$framework/Versions/Current" -maxdepth 1 -type f -perm -111 -print0 2>/dev/null)
+  # -H: Versions/Current is a symlink, and find does not descend into a symlinked start path
+  # without it (Sparkle's Autoupdate went unsigned and notarization rejected the app).
+  done < <(find -H "$framework/Versions/Current" -maxdepth 1 -type f -perm -111 -print0 2>/dev/null)
   codesign "${SIGN[@]}" "$framework"
 done
 codesign "${SIGN[@]}" ${APP_REQUIREMENT[@]+"${APP_REQUIREMENT[@]}"} --entitlements Resources/Handy.entitlements "$APP"
