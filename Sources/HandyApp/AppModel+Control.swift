@@ -31,13 +31,8 @@ extension AppModel {
         case .command(let command):
             send(command)
             return ControlResponse(state: snapshot)
-        case .screenshot(let target, let path):
-            if target == "debug-overlay" {
-                // The overlay only publishes frames while shown; let one live frame arrive first.
-                tracking.publishesDebugFrames = true
-                try? await Task.sleep(for: .milliseconds(400))
-            }
-            return attempt("screenshot") { try Screenshots.render(target, model: self, to: URL(filePath: path)) }
+        case .screenshot, .open:
+            return await handleWindows(request)
         case .record(let on):
             return attempt("recording") { try tracking.setRecording(on) }
         case .simulateCamera, .applyFix:
@@ -51,6 +46,25 @@ extension AppModel {
             guard !injecting else { return ControlResponse(ok: false, error: "already injecting", state: snapshot) }
             let result = await inject(frames, record: record, realtime: realtime)
             return ControlResponse(state: snapshot, injected: result)
+        }
+    }
+
+    private func handleWindows(_ request: ControlRequest) async -> ControlResponse {
+        switch request {
+        case .screenshot(let target, let path):
+            if target == "debug-overlay" {
+                // The overlay only publishes frames while shown; let one live frame arrive first.
+                tracking.publishesDebugFrames = true
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+            return attempt("screenshot") { try Screenshots.render(target, model: self, to: URL(filePath: path)) }
+        case .open(let name):
+            return attempt("open") {
+                guard let window = HandyWindow(rawValue: name) else { throw ControlError("no window named \(name)") }
+                open(window)
+            }
+        default:
+            return ControlResponse(ok: false, error: "not a window request", state: snapshot)
         }
     }
 

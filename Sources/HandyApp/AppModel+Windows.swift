@@ -1,4 +1,5 @@
 import AppKit
+import HandyControl
 import HandyCore
 import HandyOutput
 import SwiftUI
@@ -74,7 +75,7 @@ extension AppModel {
             ?? NSWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Record Corpus Session"
         window.isReleasedWhenClosed = false
-        window.contentViewController = NSHostingController(rootView: CorpusRecorderView(model: recorder))
+        window.contentViewController = Self.fixedSize(CorpusRecorderView(model: recorder))
         window.center()
         corpusWindow = window
         NSApplication.shared.activate()
@@ -86,10 +87,32 @@ extension AppModel {
         let window = NSWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Pointing Test"
         window.isReleasedWhenClosed = false
-        window.contentViewController = NSHostingController(rootView: PointingTestView(model: PointingTestModel()))
+        window.contentViewController = Self.fixedSize(PointingTestView(model: PointingTestModel()))
         window.center()
         pointingWindow = window
         NSApplication.shared.activate()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// Opens a window the menu-bar menu would, so `handyctl open` works when the icon is hidden.
+    func open(_ window: HandyWindow) {
+        NSApplication.shared.activate()
+        switch window {
+        case .corpus: showCorpusRecorder()
+        case .pointingTest: showPointingTest()
+        case .tutorial: showOnboarding()
+        case .cheatSheet: toggleCheatSheet()
+        case .settings: NSApplication.shared.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        }
+    }
+
+    /// A hosting controller sized once from its content. Letting SwiftUI resize a zero-sized window
+    /// while it lays out re-enters layout, and on macOS 26 AppKit aborts the app (the corpus recorder
+    /// crashed on open).
+    static func fixedSize<Content: View>(_ view: Content) -> NSViewController {
+        let controller = NSHostingController(rootView: view)
+        controller.sizingOptions = []
+        controller.preferredContentSize = controller.view.fittingSize
+        return controller
     }
 }

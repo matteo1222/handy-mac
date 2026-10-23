@@ -145,6 +145,24 @@ struct Perform: ParsableCommand {
 
 extension NamedAction: ExpressibleByArgument {}
 
+struct Open: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Open one of Handy's windows in the running app, for when the menu-bar icon is hidden.",
+        discussion: "Windows: \(HandyWindow.allCases.map(\.rawValue).joined(separator: ", ")).")
+
+    @Argument(help: "The window to open.")
+    var window: HandyWindow
+
+    @Option(help: "Control socket path.")
+    var socket = ControlSocket.defaultPath
+
+    func run() throws {
+        try reply(to: .open(window: window.rawValue), socket: socket)
+    }
+}
+
+extension HandyWindow: ExpressibleByArgument {}
+
 struct Report: ParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Print local usage counts: engaged time, actions by kind and accidental actions per hour.")

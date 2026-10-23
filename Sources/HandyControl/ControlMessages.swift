@@ -19,6 +19,17 @@ public enum ControlRequest: Codable, Sendable, Equatable {
     case perform(action: String, record: Bool)
     /// Usage counts per day and in total, for measuring accidental actions per hour.
     case usage
+    /// Opens one of Handy's windows (`HandyWindow`), for when the menu-bar icon is hidden.
+    case open(window: String)
+}
+
+/// The windows `handyctl open` can bring up: everything the menu-bar menu opens.
+public enum HandyWindow: String, Codable, Sendable, CaseIterable {
+    case corpus
+    case pointingTest = "pointing-test"
+    case tutorial
+    case cheatSheet = "cheat-sheet"
+    case settings
 }
 
 /// Local usage counts: active (engaged) time, actions by kind and oops, per day and in total.
