@@ -36,6 +36,22 @@ enum Screenshots {
             "corpus-recorder": {
                 AnyView(CorpusRecorderView(model: CorpusRecorderModel(begin: {}, end: {})))
             },
+            "corpus-prompt": {
+                AnyView(
+                    HStack(alignment: .top, spacing: 24) {
+                        RecordingPrompt(
+                            prompt: "While engaged, pinch thumb and index once, try 2 of 3", remaining: 2.4,
+                            progress: 0.3,
+                            reading: true, step: 14, steps: 52, totalMinutes: 9
+                        ) {}
+                        RecordingPrompt(
+                            prompt: "While engaged, pinch thumb and index once, try 2 of 3", remaining: 3.1,
+                            progress: 0.31,
+                            reading: false, step: 14, steps: 52, totalMinutes: 9
+                        ) {}
+                    }
+                    .padding(24).frame(width: 1000))
+            },
             "cheat-sheet": { AnyView(CheatSheetView(entries: model.guideEntries, appName: "Safari")) },
             "cursor-ring": {
                 AnyView(
@@ -52,7 +68,7 @@ enum Screenshots {
 
     nonisolated static let targets = [
         "hud", "hud-gallery", "cursor-ring", "settings", "onboarding", "onboarding:<step>", "palette", "cheat-sheet",
-        "corpus-recorder",
+        "corpus-recorder", "corpus-prompt",
     ]
 
     static func render(_ target: String, model: AppModel, to url: URL) throws {

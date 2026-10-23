@@ -11,7 +11,9 @@ import SwiftUI
 final class CorpusRecorderModel {
     enum Status: Equatable {
         case setup
-        case recording(prompt: String, label: String, remaining: Double, progress: Double, reading: Bool)
+        /// `step` counts from 1; `reading` is the get-ready pause before the prompt, `remaining` its seconds.
+        case recording(
+            prompt: String, label: String, remaining: Double, progress: Double, reading: Bool, step: Int, steps: Int)
         case finished(path: String)
         case failed(String)
     }
@@ -19,6 +21,7 @@ final class CorpusRecorderModel {
     var conditions = CorpusConditions(participant: "p01", lighting: .office, distance: .near)
     private(set) var status = Status.setup
     @ObservationIgnored private var session = CorpusSession()
+    var totalMinutes: Double { session.totalSeconds / 60 }
     @ObservationIgnored private var writer: LandmarkStreamWriter?
     @ObservationIgnored private var url: URL?
     @ObservationIgnored private var origin: Double?
@@ -48,7 +51,9 @@ final class CorpusRecorderModel {
                 url: url, header: .init(source: "corpus", labels: session.labels, meta: conditions.meta))
             self.url = url
             origin = nil
-            status = .recording(prompt: "Get ready", label: "", remaining: session.gap, progress: 0, reading: true)
+            status = .recording(
+                prompt: "Get ready", label: "", remaining: session.gap, progress: 0, reading: true, step: 1,
+                steps: session.prompts.count)
             begin()
         } catch {
             status = .failed(error.localizedDescription)
@@ -72,13 +77,14 @@ final class CorpusRecorderModel {
         case .reading(let next, let remaining):
             let prompt = session.prompts[next]
             status = .recording(
-                prompt: prompt.instruction, label: prompt.label, remaining: remaining, progress: progress, reading: true
-            )
+                prompt: prompt.instruction, label: prompt.label, remaining: remaining, progress: progress,
+                reading: true,
+                step: next + 1, steps: session.prompts.count)
         case .doing(let index, let remaining):
             let prompt = session.prompts[index]
             status = .recording(
                 prompt: prompt.instruction, label: prompt.label, remaining: remaining, progress: progress,
-                reading: false)
+                reading: false, step: index + 1, steps: session.prompts.count)
         case .finished:
             stop(failed: nil)
         }
@@ -104,20 +110,11 @@ struct CorpusRecorderView: View {
             switch model.status {
             case .setup, .failed, .finished:
                 setup
-            case .recording(let prompt, _, let remaining, let progress, let reading):
-                VStack(spacing: 16) {
-                    Text(reading ? "Next" : "Now").font(.headline).foregroundStyle(.secondary)
-                    Text(prompt)
-                        .font(.title.weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                    Text(remaining, format: .number.precision(.fractionLength(0)))
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(reading ? Color.secondary : Color.accentColor)
-                    ProgressView(value: min(progress, 1))
-                    Button("Stop Recording") { model.stop() }
-                }
+            case .recording(let prompt, _, let remaining, let progress, let reading, let step, let steps):
+                RecordingPrompt(
+                    prompt: prompt, remaining: remaining, progress: progress, reading: reading, step: step,
+                    steps: steps, totalMinutes: model.totalMinutes
+                ) { model.stop() }
             }
         }
         .padding(24)
@@ -128,7 +125,8 @@ struct CorpusRecorderView: View {
     private var setup: some View {
         Text("Record a corpus session").font(.title2.weight(.semibold))
         Text(
-            "About 9 minutes: Handy asks for each gesture a few times, then everyday activity. Only hand landmark "
+            "About 9 minutes: Handy asks for each gesture a few times, then everyday activity. Each step first "
+                + "counts down while you get ready, then counts down while you do it. Only hand landmark "
                 + "numbers are saved, never video. Nothing you do is sent to your Mac as input while recording."
         )
         .foregroundStyle(.secondary)
@@ -160,5 +158,48 @@ struct CorpusRecorderView: View {
         Button("Start Recording") { model.start() }
             .buttonStyle(.borderedProminent)
             .disabled(model.conditions.participant.trimmingCharacters(in: .whitespaces).isEmpty)
+    }
+}
+
+/// One step of a recording: what to do, whether to wait or act, and how long is left.
+struct RecordingPrompt: View {
+    let prompt: String
+    let remaining: Double
+    let progress: Double
+    let reading: Bool
+    let step: Int
+    let steps: Int
+    let totalMinutes: Double
+    let stop: () -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Text("Step \(step) of \(steps)").font(.subheadline).foregroundStyle(.secondary)
+            Label(
+                reading ? "Get ready" : "Do it now",
+                systemImage: reading ? "hourglass" : "hand.raised.fill"
+            )
+            .font(.headline)
+            .foregroundStyle(reading ? Color.secondary : Color.accentColor)
+            Text(prompt)
+                .font(.title.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+            Text(countdown)
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(reading ? Color.secondary : Color.accentColor)
+            ProgressView(value: min(progress, 1)) {
+                Text("About \(Int(((1 - min(progress, 1)) * totalMinutes).rounded(.up))) min left in the session")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Button("Stop Recording", action: stop)
+        }
+    }
+
+    private var countdown: String {
+        let seconds = Int(remaining.rounded(.up))
+        return reading ? "Starts in \(seconds) s" : "\(seconds) s left"
     }
 }

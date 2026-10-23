@@ -61,7 +61,7 @@ public struct CorpusPrompt: Sendable, Hashable, Codable {
         {
             (1...times).map { n in
                 CorpusPrompt(
-                    label: gesture.rawValue, instruction: "\(instruction) (\(n) of \(times))", seconds: seconds)
+                    label: gesture.rawValue, instruction: "\(instruction), try \(n) of \(times)", seconds: seconds)
             }
         }
         var prompts: [CorpusPrompt] = []
