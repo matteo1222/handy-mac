@@ -195,7 +195,10 @@ extension AppModel {
         case .retryCamera:
             tracking.restart()
         case .useFallbackCamera:
-            cameraID = CameraDevices.fallback()?.id
+            // Choosing the camera that is already chosen changes nothing, so restart outright: after an
+            // iPhone camera drops, the built-in one is often the preference already.
+            let fallback = CameraDevices.fallback()?.id
+            if cameraID == fallback { tracking.restart() } else { cameraID = fallback }
         case .openCameraSettings, .openAccessibilitySettings, .openKeyboardSettings:
             if let url = fix.settingsURL { NSWorkspace.shared.open(url) }
         }
