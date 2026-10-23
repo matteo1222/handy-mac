@@ -1,11 +1,11 @@
 ---
 id: TASK-27
 title: 'Signed, notarized builds with Sparkle updates'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:39'
-updated_date: '2026-10-23 10:43'
+updated_date: '2026-10-23 11:15'
 labels:
   - ready-for-human
 milestone: m-2
@@ -27,8 +27,8 @@ External beta testers need a trusted build. Synthesising input rules out the App
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 GitHub Actions on macOS runners builds, signs with Developer ID, notarizes and staples
-- [ ] #2 Sparkle appcast publishes updates; the update check is the only network call in the default build
+- [x] #1 GitHub Actions on macOS runners builds, signs with Developer ID, notarizes and staples
+- [x] #2 Sparkle appcast publishes updates; the update check is the only network call in the default build
 - [x] #3 Launch at login available and off by default
 <!-- AC:END -->
 
@@ -54,4 +54,12 @@ App Intents metadata extraction is now part of package-app.sh (resolves the TASK
 Local Developer ID signing attempted (OUT_DIR=.build/release-app APP_IDENTITY='Developer ID Application: <name> (<team id>)' scripts/package-app.sh release): macOS asks keychain permission once per codesign call (one per nested Sparkle helper), so it was stopped. To run locally, grant codesign access to the Developer ID key once (Keychain Access › key › Access Control) or sign in CI with an imported keychain. Notarization still needs a notarytool profile (none in the keychain).
 
 2026-10-23: local release proven. Notary profile 'handy' stored, Developer ID key usable by codesign, Sparkle EdDSA keys generated (private key in the login keychain; public key 1YMFy6B96W1xKk80RUCHrAZiLlx+CIHVm3lBEEnFrFo=). scripts/sign-and-notarize.sh built, signed, notarized (submission accepted), stapled; spctl: accepted, source=Notarized Developer ID. Fixed on the way: Sparkle's Autoupdate went unsigned (find -H) and notarytool rejections now fail the script with Apple's log. Remaining for AC1/AC2: the release environment's GitHub secrets (DEVELOPER_ID_P12 + password, NOTARY_*, SPARKLE_PRIVATE_KEY/PUBLIC_KEY), then a v0.1.0 tag to prove the workflow and appcast end to end.
+
+2026-10-23: v0.1.0 released by the GitHub Actions release workflow (run 39944165859, macos-26): make verify, Developer ID import, notarize, staple, appcast, publish all green. https://github.com/matteo1222/handy-mac/releases/tag/v0.1.0. A fresh download marked quarantined passes spctl (accepted, source=Notarized Developer ID), stapler validate passes, and appcast.xml carries the zip URL with its EdDSA signature; the app's feed URL (releases/latest/download/appcast.xml) resolves (HTTP 200).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Signed, notarized releases with Sparkle updates: scripts/sign-and-notarize.sh and the tag-triggered release workflow build, sign with Developer ID (hardened runtime, every nested Sparkle binary), notarize (failing loudly with Apple's log on rejection), staple and publish a zip plus an EdDSA-signed appcast. Secrets live in the release environment. Launch at login is off by default. v0.1.0 is live and passes Gatekeeper as Notarized Developer ID.
+<!-- SECTION:FINAL_SUMMARY:END -->
