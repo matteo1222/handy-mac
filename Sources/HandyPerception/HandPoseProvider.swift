@@ -1,3 +1,4 @@
+import CoreML
 import CoreVideo
 import Foundation
 import HandyCore
@@ -45,11 +46,21 @@ public enum HandBackend: String, Sendable, CaseIterable {
         UserDefaults.standard.string(forKey: "handBackend").flatMap(HandBackend.init(rawValue:)) ?? standard
     }
 
-    /// A fresh provider; Core ML falls back to Vision if its models cannot load.
-    public func makeProvider() -> any HandPoseProvider {
+    /// A fresh provider; Core ML falls back to Vision if its models cannot load. `live` is for the
+    /// running camera: see `liveComputeUnits`.
+    public func makeProvider(live: Bool = false) -> any HandPoseProvider {
         switch self {
         case .vision: VisionHandPoseProvider()
-        case .coreml: (try? CoreMLHandPoseProvider()) ?? VisionHandPoseProvider()
+        case .coreml:
+            (try? CoreMLHandPoseProvider(computeUnits: live ? Self.liveComputeUnits : .all))
+                ?? VisionHandPoseProvider()
         }
     }
+
+    /// Core ML on the live camera skips the Neural Engine. While a camera streams, the system's
+    /// camera pipeline keeps the Neural Engine busy for ~20 ms after each frame arrives, just when
+    /// Handy wants it: on an M3, in-app Core ML took p50 20 / p95 23 ms on `.all` against 12.6 / 13.3
+    /// on `.cpuAndGPU` (release build, 30 fps, no hand). Offline, with no camera, the Neural Engine
+    /// is fastest, so video and benches keep `.all`.
+    public static let liveComputeUnits = MLComputeUnits.cpuAndGPU
 }

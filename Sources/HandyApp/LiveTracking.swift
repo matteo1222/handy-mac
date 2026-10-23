@@ -115,7 +115,7 @@ final class LiveTracking {
     }
 
     private func startCapture(deviceID: String?) {
-        let provider = HandBackend.preferred.makeProvider()
+        let provider = HandBackend.preferred.makeProvider(live: true)
         backendName = provider.name
         let capture = CameraCapture(hands: provider)
         self.capture = capture
