@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-22 00:19'
+updated_date: '2026-10-23 04:08'
 labels:
   - ready-for-agent
 milestone: m-0
@@ -55,6 +55,8 @@ Checked with direct evidence: AC2 HandTrackerTests (confidence < 0.3 dropped, < 
 Live evidence (2026-10-20): capture runs 1280x720 mirrored, 30 fps with a hand (recording shows 30 frames/s) and 10 fps idle (frameInterval p50 100 ms after 5 s without a hand); mirroring confirmed by the chirality analysis of the live recording (a live recording, not kept in the repo). Debug overlay verified: handyctl screenshot debug-overlay during handyctl inject of a real-hand clip shows all 21 landmarks, palm centroid and the feature line (scale, pinch, reach, facing). AC6: with Vision, live inference is p50 10 ms / p95 27 ms on M3 (over budget); the Core ML backend measures p50 1.1-2.2 / p95 3.4-5.2 ms on real video clips and filter+features p95 < 1 ms, so AC6 passes once TASK-4 picks Core ML as the default (no M1 available here; measured on M3).
 
 AC6 (2026-10-22): handyctl bench-perception with the app stopped: Core ML p50 1.5 / p95 4.7 ms, Vision p50 2.6 / p95 2.8 ms, filter+features p95 0.01 ms (measured on M3; no M1 here). Inside the running app both backends measure ~24 ms per idle frame; that floor is contention in the app, tracked as a follow-up.
+
+In-app inference, measured with a hand in view (4fd30c0, 164b7f0; M3, macOS 26.6, release app, 30 fps). Method: real hand clips (.build/videos: six-seven, rock-paper-scissors, ghana-alphabet, hand-wave) swapped frame for frame into the live capture callback, camera running, output on a recording sink; no one recorded. perception.inference p50/p95 ms: start of the day (Core ML on the Neural Engine) 21.3-23.1 / 26-31; after 4fd30c0 (CPU+GPU) six-seven 11.6/34.9, rock-paper-scissors 12.0/33.5, hand-wave 20.6/25.0; after 164b7f0 six-seven 8.6/13.6, rock-paper-scissors 10.4/19.5, ghana-alphabet 8.4/19.0, hand-wave (two hands most frames) 14.9/19.2. One-hand frames with a single landmark run: p50 7.7-8.3, p95 10.0-10.3. Empty frames now cost ~0.03 ms on the frame path because the palm detector runs on its own queue between frames (12 ms there). Per landmark run: vImage crop 0.6-0.9 ms + Core ML predict p50 ~7.5 / p95 ~9.5. Budget (spec: hand pose <= 10 ms, one hand) is met at p50 but not cleanly at p95. Why not lower: (1) the Neural Engine runs the landmark model in ~2.3 ms with no camera, but with the camera on, every frame carries one ~15 ms Neural Engine collision with work the macOS camera stack does in our process (Portrait/CMIO video-effects graph; not the face detector, HUD, format, mirroring or Reactions plist key), so it is unusable live; (2) on CPU or GPU the predict is mostly CPU-side kernel encoding on a core that clocks down between frames: 2.6 ms back-to-back vs 7.5 ms at 30 fps pacing; keeping the core busy fixes it but needs 6-12 ms of spinning per frame. Two-hand frames are about twice one-hand. Remaining levers: a lighter landmark model, batching both hands into one prediction, or the face detector on its own queue (it does not slow hand inference, but hand+face can overrun a 33 ms frame with two hands).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
