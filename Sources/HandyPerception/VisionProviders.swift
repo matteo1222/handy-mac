@@ -13,6 +13,11 @@ public final class VisionHandPoseProvider: HandPoseProvider {
     }
 
     public func hands(in pixelBuffer: CVPixelBuffer) throws -> [HandPose] {
+        // Vision's request results are autoreleased; drain them per frame (see CoreMLHandPoseProvider).
+        try autoreleasepool { try track(pixelBuffer) }
+    }
+
+    private func track(_ pixelBuffer: CVPixelBuffer) throws -> [HandPose] {
         let geometry = ImageGeometry(
             width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
         try VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:]).perform([request])

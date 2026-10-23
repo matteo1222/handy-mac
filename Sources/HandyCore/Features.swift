@@ -106,7 +106,7 @@ public struct FeatureExtractor: Sendable {
     /// +1 when the palm faces the camera, -1 when the back of the hand does. Seen palm-first in the
     /// mirrored image, a right hand's index knuckle and little knuckle turn one way around the wrist;
     /// seen from the back, the other way. Rotation does not change the sign.
-    static func palmSide(wrist: Point, joints: [Point?], chirality: Chirality) -> Double {
+    public static func palmSide(wrist: Point, joints: [Point?], chirality: Chirality) -> Double {
         guard let index = joints[Joint.indexMCP.rawValue], let little = joints[Joint.littleMCP.rawValue] else {
             return 1
         }

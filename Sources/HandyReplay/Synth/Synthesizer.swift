@@ -114,6 +114,11 @@ public enum Synthesizer {
         }
 
         mutating func sample(at t: Double, transition: Double) -> HandPose? {
+            scene(at: t, transition: transition).map { $0.shape.pose(at: $0.placement) }
+        }
+
+        /// The hand's shape and placement at `t`, before projection, for drawing it.
+        mutating func scene(at t: Double, transition: Double) -> (shape: HandShape, placement: HandPlacement)? {
             while index < track.steps.count - 1, t >= elapsed + track.steps[index].duration {
                 let step = track.steps[index]
                 position = step.end ?? step.start ?? position
@@ -132,8 +137,34 @@ public enum Synthesizer {
             if let previousShape, transition > 0 {
                 shape = previousShape.blended(to: shape, smoothstep(min(local / transition, 1)))
             }
-            return shape.pose(
-                at: HandPlacement(chirality: track.chirality, wrist: start + (end - start) * progress, size: size))
+            return (
+                shape, HandPlacement(chirality: track.chirality, wrist: start + (end - start) * progress, size: size)
+            )
+        }
+    }
+
+    /// Each frame's hands as shapes and placements (no noise), for `HandRenderer` to draw: the scripted
+    /// hand a virtual camera shows.
+    public static func forEachScene(
+        _ clip: Clip,
+        _ body: (_ t: Double, _ hands: [(shape: HandShape, placement: HandPlacement)], _ face: FaceSample?) -> Void
+    ) {
+        var cursors = clip.hands.map { TrackCursor(track: $0) }
+        var faceCursor = 0
+        var faceElapsed = 0.0
+        let count = Int((clip.duration * clip.fps).rounded(.down)) + 1
+        for index in 0..<count {
+            let t = Double(index) / clip.fps
+            let hands = cursors.indices.compactMap { cursors[$0].scene(at: t, transition: clip.transition) }
+            var face: FaceSample?
+            if !clip.face.isEmpty, index % max(Int(clip.fps / 5), 1) == 0 {
+                while faceCursor < clip.face.count - 1, t >= faceElapsed + clip.face[faceCursor].duration {
+                    faceElapsed += clip.face[faceCursor].duration
+                    faceCursor += 1
+                }
+                face = FaceSample(yaw: clip.face[faceCursor].yaw)
+            }
+            body(rounded(t), hands, face)
         }
     }
 
