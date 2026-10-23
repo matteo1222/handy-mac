@@ -1,5 +1,4 @@
 import CoreGraphics
-import CoreImage
 import CoreML
 import CoreVideo
 import Foundation
@@ -30,6 +29,13 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
         }
     }
 
+    /// A hand being followed: where to crop next, and the area it covered (its landmarks' bounds,
+    /// or the palm box for a hand just detected).
+    struct Track {
+        var region: Region
+        var extent: CGRect
+    }
+
     struct Detection {
         var region: Region
         var score: Double
@@ -37,12 +43,14 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
     }
 
     static let side = 256
-    private let detector: MLModel
+    private let palms: PalmDetector
     private let landmarker: MLModel
+    private let landmarkInput: CropRenderer
     private let maximumHandCount: Int
-    private let context = CIContext(options: [.cacheIntermediates: false])
-    private var input: CVPixelBuffer?
-    private var tracked: [Region] = []
+    private let backgroundDetection: Bool
+    private var tracked: [Track] = []
+    /// Landmark-model runs so far, for tests: one per tracked hand per frame.
+    private(set) var landmarkRuns = 0
     private var framesSinceDetection = 0
     /// Frames between palm-detector runs while fewer hands than the maximum are tracked.
     private let redetectInterval = 10
@@ -56,12 +64,21 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
         }
     }
 
-    public init(maximumHandCount: Int = 2, computeUnits: MLComputeUnits = .all) throws {
+    /// With `backgroundDetection`, the palm detector runs on its own queue after a frame's landmarks,
+    /// and the hands it finds join on the next frame: a frame costs only the landmark model, and a
+    /// hand takes one frame longer to pick up. For the live camera; offline callers keep each frame's
+    /// result a function of the frames so far.
+    public init(
+        maximumHandCount: Int = 2, computeUnits: MLComputeUnits = .all, backgroundDetection: Bool = false
+    ) throws {
         let configuration = MLModelConfiguration()
         configuration.computeUnits = computeUnits
-        detector = try MLModel(contentsOf: try Self.modelURL("HandPalmDetector"), configuration: configuration)
+        palms = try PalmDetector(
+            model: try MLModel(contentsOf: try Self.modelURL("HandPalmDetector"), configuration: configuration))
         landmarker = try MLModel(contentsOf: try Self.modelURL("HandLandmarker"), configuration: configuration)
+        landmarkInput = try CropRenderer(side: Self.side)
         self.maximumHandCount = maximumHandCount
+        self.backgroundDetection = backgroundDetection
     }
 
     static func modelURL(_ name: String) throws -> URL {
@@ -82,96 +99,81 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
     public func reset() {
         tracked = []
         framesSinceDetection = 0
+        _ = palms.takeFound()
     }
 
     public func hands(in pixelBuffer: CVPixelBuffer) throws -> [HandPose] {
-        // Core ML and Core Image hand back autoreleased buffers backed by IOSurfaces. A caller that
-        // loops without draining a pool (a long video) runs the Neural Engine out of surfaces.
+        // Core ML hands back autoreleased buffers backed by IOSurfaces. A caller that loops without
+        // draining a pool (a long video) runs the Neural Engine out of surfaces.
         try autoreleasepool { try track(pixelBuffer) }
     }
 
     private func track(_ pixelBuffer: CVPixelBuffer) throws -> [HandPose] {
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
-        let frame = CIImage(cvPixelBuffer: pixelBuffer)
         framesSinceDetection += 1
-        if tracked.isEmpty || (tracked.count < maximumHandCount && framesSinceDetection >= redetectInterval) {
+        if backgroundDetection {
+            adopt(palms.takeFound())
+        } else if needsDetection {
             framesSinceDetection = 0
-            for detection in try detect(frame, width: width, height: height) where tracked.count < maximumHandCount {
-                let overlaps = tracked.contains { Self.iou(Self.bounds($0), detection.box) > 0.3 }
-                if !overlaps { tracked.append(detection.region) }
-            }
+            adopt(try palms.detect(pixelBuffer))
         }
         var poses: [HandPose] = []
-        var next: [Region] = []
-        for region in tracked {
-            guard let (pose, pixels) = try landmarks(frame, in: region, width: width, height: height) else { continue }
+        var next: [Track] = []
+        for track in tracked {
+            guard let (pose, pixels) = try landmarks(pixelBuffer, in: track.region, width: width, height: height)
+            else { continue }
             let following = Self.region(following: pixels)
             // Two tracks that converge on one hand keep only the first.
-            if next.contains(where: { Self.iou(Self.bounds($0), Self.bounds(following)) > 0.5 }) { continue }
+            if next.contains(where: { Self.iou(Self.bounds($0.region), Self.bounds(following)) > 0.5 }) { continue }
             poses.append(pose)
-            next.append(following)
+            next.append(Track(region: following, extent: Self.extent(of: pixels)))
         }
         tracked = next
+        // After this frame's landmarks, so the search runs in the gap before the next frame.
+        if backgroundDetection, needsDetection {
+            framesSinceDetection = 0
+            palms.detectInBackground(pixelBuffer)
+        }
         return poses
     }
 
-    // MARK: - Palm detection
+    /// No hand tracked, or room for another and time to look for it.
+    private var needsDetection: Bool {
+        tracked.isEmpty || (tracked.count < maximumHandCount && framesSinceDetection >= redetectInterval)
+    }
 
-    func detect(_ frame: CIImage, width: Int, height: Int) throws -> [Detection] {
-        // Letterbox the frame into the square input, like MediaPipe's resize-and-pad.
-        let scale = Double(Self.side) / Double(max(width, height))
-        let padX = (Double(Self.side) - Double(width) * scale) / 2
-        let padY = (Double(Self.side) - Double(height) * scale) / 2
-        let placed = frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-            .transformed(by: CGAffineTransform(translationX: padX, y: padY))
-        let output = try predict(detector, placed, key: "detections")
-        // Read the score column first and decode only the rows that pass: converting all 2944 × 19
-        // values every frame cost more than the model itself, most of all in debug builds.
-        let rows = ModelRows(output)
-        var candidates: [Detection] = []
-        for row in 0..<rows.count {
-            let score = Double(rows[row, rows.columns - 1])
-            guard score >= 0.5 else { continue }
-            func value(_ column: Int) -> Float { rows[row, column] }
-            // Normalised square coordinates (origin top-left) to frame pixels.
-            func pixel(_ x: Float, _ y: Float) -> CGPoint {
-                CGPoint(
-                    x: (Double(x) * Double(Self.side) - padX) / scale, y: (Double(y) * Double(Self.side) - padY) / scale
-                )
+    /// Starts tracking detected palms that are not already tracked, up to the maximum. A palm whose
+    /// centre lies on a tracked hand (its extent, padded a quarter each way for a search that ran a
+    /// frame earlier) is that hand. (Comparing the palm box with the tracked crop
+    /// square never matched: the square is 2.6 times the palm's width, so every search re-added the
+    /// tracked hand and the next frame ran the landmark model twice.)
+    private func adopt(_ detections: [Detection]) {
+        for detection in detections where tracked.count < maximumHandCount {
+            let palm = CGPoint(x: detection.box.midX, y: detection.box.midY)
+            let onTracked = tracked.contains {
+                $0.extent.insetBy(dx: -$0.extent.width / 4, dy: -$0.extent.height / 4).contains(palm)
             }
-            let topLeft = pixel(value(1), value(0))
-            let bottomRight = pixel(value(3), value(2))
-            let box = CGRect(
-                x: topLeft.x, y: topLeft.y, width: bottomRight.x - topLeft.x, height: bottomRight.y - topLeft.y)
-            let wrist = pixel(value(4), value(5))
-            let middle = pixel(value(8), value(9))
-            // MediaPipe's palm-to-hand rect: shift half a box toward the fingers, grow 2.6×.
-            let rotation = atan2(wrist.y - middle.y, wrist.x - middle.x) - .pi / 2
-            let size = box.width * 2.6
-            let shift = CGPoint(x: -sin(rotation) * -0.5 * box.width, y: cos(rotation) * -0.5 * box.width)
-            let center = CGPoint(x: box.midX + shift.x, y: box.midY + shift.y)
-            candidates.append(
-                Detection(region: Region(center: center, size: size, rotation: rotation), score: score, box: box))
+            if !onTracked {
+                tracked.append(Track(region: detection.region, extent: detection.box))
+            }
         }
-        // Non-maximum suppression.
-        var kept: [Detection] = []
-        for candidate in candidates.sorted(by: { $0.score > $1.score })
-        where !kept.contains(where: { Self.iou($0.box, candidate.box) > 0.3 }) {
-            kept.append(candidate)
-        }
-        return kept
+    }
+
+    static func extent(of pixels: [CGPoint]) -> CGRect {
+        let xs = pixels.map(\.x)
+        let ys = pixels.map(\.y)
+        let (minX, minY) = (xs.min() ?? 0, ys.min() ?? 0)
+        return CGRect(x: minX, y: minY, width: (xs.max() ?? 0) - minX, height: (ys.max() ?? 0) - minY)
     }
 
     // MARK: - Landmarks
 
-    func landmarks(_ frame: CIImage, in region: Region, width: Int, height: Int) throws -> (HandPose, [CGPoint])? {
-        // Core Image is y-up; regions are y-down. Flip into and out of the crop.
+    func landmarks(_ frame: CVPixelBuffer, in region: Region, width: Int, height: Int) throws -> (HandPose, [CGPoint])?
+    {
         let toFrame = region.cropToFrame
-        let flipFrame = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: Double(height))
-        let flipCrop = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: Double(Self.side))
-        let frameToCropCI = flipFrame.concatenating(toFrame.inverted()).concatenating(flipCrop)
-        let output = try predict(landmarker, frame.transformed(by: frameToCropCI), key: "landmarks")
+        landmarkRuns += 1
+        let output = try Self.predict(landmarker, landmarkInput, frame, cropToFrame: toFrame, key: "landmarks")
         let values = Self.floats(output)
         let presence = Double(values[0])
         guard presence >= 0.5 else { return nil }
@@ -219,27 +221,16 @@ public final class CoreMLHandPoseProvider: HandPoseProvider {
 
     // MARK: - Plumbing
 
-    private func predict(_ model: MLModel, _ image: CIImage, key: String) throws -> MLMultiArray {
-        let buffer = try inputBuffer()
-        let square = CGRect(x: 0, y: 0, width: Self.side, height: Self.side)
-        let background = CIImage(color: .black).cropped(to: square)
-        context.render(image.cropped(to: square).composited(over: background), to: buffer)
-        let features = try MLDictionaryFeatureProvider(dictionary: ["image": MLFeatureValue(pixelBuffer: buffer)])
+    /// Renders the crop into `input` and runs the model on it.
+    static func predict(
+        _ model: MLModel, _ input: CropRenderer, _ frame: CVPixelBuffer, cropToFrame: CGAffineTransform, key: String
+    ) throws -> MLMultiArray {
+        try input.render(frame, cropToFrame: cropToFrame)
+        let features = try MLDictionaryFeatureProvider(dictionary: ["image": MLFeatureValue(pixelBuffer: input.output)])
         guard let array = try model.prediction(from: features).featureValue(for: key)?.multiArrayValue else {
             throw Failure.missingModel(key)
         }
         return array
-    }
-
-    private func inputBuffer() throws -> CVPixelBuffer {
-        if let input { return input }
-        var buffer: CVPixelBuffer?
-        CVPixelBufferCreate(
-            kCFAllocatorDefault, Self.side, Self.side, kCVPixelFormatType_32BGRA,
-            [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &buffer)
-        guard let buffer else { throw Failure.missingModel("input buffer") }
-        input = buffer
-        return buffer
     }
 
     /// The array's values in row-major order. Core ML may pad rows (fp16 outputs from the Neural

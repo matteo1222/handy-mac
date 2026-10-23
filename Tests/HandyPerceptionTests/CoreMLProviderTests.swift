@@ -28,3 +28,25 @@ func coreMLAgreesWithVision(_ emoji: String) throws {
     let buffer = try #require(SampleHandImage.pixelBuffer(" ", mirrored: true))
     #expect(try CoreMLHandPoseProvider().hands(in: buffer).isEmpty)
 }
+
+/// The periodic search for another hand finds the tracked one again and does not track it twice:
+/// one hand costs one landmark run per frame, search frames included.
+@Test func coreMLRedetectionKeepsOneTrackPerHand() throws {
+    let buffer = try #require(SampleHandImage.pixelBuffer("✋", mirrored: true))
+    let coreML = try CoreMLHandPoseProvider()
+    for _ in 0..<25 { #expect(try coreML.hands(in: buffer).count == 1) }
+    #expect(coreML.landmarkRuns == 25)
+}
+
+/// With background detection the hand found between frames is tracked from the next frame on.
+@Test func coreMLBackgroundDetectionPicksTheHandUpNextFrame() async throws {
+    let buffer = try #require(SampleHandImage.pixelBuffer("✋", mirrored: true))
+    let coreML = try CoreMLHandPoseProvider(backgroundDetection: true)
+    #expect(try coreML.hands(in: buffer).isEmpty)
+    var hands: [HandPose] = []
+    for _ in 0..<50 where hands.isEmpty {
+        try await Task.sleep(for: .milliseconds(20))
+        hands = try coreML.hands(in: buffer)
+    }
+    #expect(hands.count == 1)
+}

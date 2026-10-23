@@ -93,6 +93,32 @@ public enum VideoLandmarks {
         return Output(frames: frames, aspect: aspect, inferenceMilliseconds: timings)
     }
 
+    /// Up to `limit` frames decoded as the live camera delivers them (1280×720, full-range bi-planar
+    /// YUV, 30 fps), for timing a provider on real hands without a camera. Frames are not mirrored.
+    public static func cameraFrames(_ url: URL, limit: Int) async throws -> [CVPixelBuffer] {
+        let asset = AVURLAsset(url: url)
+        guard let track = try await asset.loadTracks(withMediaType: .video).first else { throw Failure.noVideoTrack }
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(
+            track: track,
+            outputSettings: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,
+                kCVPixelBufferWidthKey as String: 1280, kCVPixelBufferHeightKey as String: 720,
+            ])
+        reader.add(output)
+        guard reader.startReading() else { throw Failure.readerFailed(reader.error?.localizedDescription ?? "unknown") }
+        var frames: [CVPixelBuffer] = []
+        var lastKept = -Double.infinity
+        while frames.count < limit, let sample = output.copyNextSampleBuffer() {
+            let t = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample))
+            guard t - lastKept >= 1 / 30.0 - 1e-4, let buffer = CMSampleBufferGetImageBuffer(sample) else { continue }
+            lastKept = t
+            frames.append(buffer)
+        }
+        if reader.status == .failed { throw Failure.readerFailed(reader.error?.localizedDescription ?? "unknown") }
+        return frames
+    }
+
     /// Applies the track's orientation (phone videos are often stored rotated) and the mirror.
     static func upright(
         _ buffer: CVPixelBuffer, transform: CGAffineTransform, mirror: Bool, context: CIContext

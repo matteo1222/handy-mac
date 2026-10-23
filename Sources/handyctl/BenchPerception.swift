@@ -5,13 +5,14 @@ import HandyCore
 import HandyPerception
 import HandyReplay
 
-struct BenchPerception: ParsableCommand {
+struct BenchPerception: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "bench-perception",
         abstract: "Time hand-pose inference and filter+features against the per-frame budgets. Exits 1 over budget.",
         discussion: """
             Inference runs the chosen backend on rendered hand frames (no camera needed), in blocks of one
             frame so a tracking backend runs mostly on tracked frames, as it would on a live camera.
+            --video runs it on a real clip instead, decoded in the camera's format and frame rate.
             Filter+features runs HandyCore's tracker and feature extractor on a two-hand synthetic clip.
             Budgets (docs/spec.md): inference p95 <= 10 ms, filter+features p95 <= 1 ms.
             Back-to-back frames keep the hardware clocked up; --interval 33 shows the cost a 30 fps
@@ -34,7 +35,10 @@ struct BenchPerception: ParsableCommand {
     @Flag(help: "Use the compute units the app uses on the live camera instead of the offline ones.")
     var live = false
 
-    func run() throws {
+    @Option(help: "A video of hands to time instead of the rendered frames (first --iterations frames at 30 fps).")
+    var video: String?
+
+    func run() async throws {
         let clock = ContinuousClock()
         func milliseconds(_ duration: Duration) -> Double {
             Double(duration.components.seconds) * 1000 + Double(duration.components.attoseconds) / 1e15
@@ -43,18 +47,26 @@ struct BenchPerception: ParsableCommand {
         let provider: any HandPoseProvider =
             switch backend {
             case "vision": VisionHandPoseProvider()
-            case "coreml": try CoreMLHandPoseProvider(computeUnits: live ? HandBackend.liveComputeUnits : .all)
+            case "coreml":
+                try CoreMLHandPoseProvider(
+                    computeUnits: live ? HandBackend.liveComputeUnits : .all, backgroundDetection: live)
             default: throw ValidationError("backend must be vision or coreml")
             }
-        let frames = ["✋", "👍", "🤏", "🤙"].compactMap { SampleHandImage.pixelBuffer($0, mirrored: true) }
-        guard let warmup = frames.first else { throw ValidationError("could not render sample frames") }
+        let frames =
+            if let video {
+                try await VideoLandmarks.cameraFrames(URL(filePath: video), limit: iterations)
+            } else {
+                ["✋", "👍", "🤏", "🤙"].compactMap { SampleHandImage.pixelBuffer($0, mirrored: true) }
+            }
+        guard let warmup = frames.first else { throw ValidationError("no frames to time") }
         let modelLoad = try clock.measure { _ = try provider.hands(in: warmup) }
         var inference: [Double] = []
         var detected = 0
         for index in 0..<iterations {
             var hands: [HandPose] = []
-            let frame = frames[index * frames.count / iterations]
-            if interval > 0 { Thread.sleep(forTimeInterval: interval / 1000) }
+            // Rendered frames run in blocks; video frames play in order, one per iteration.
+            let frame = video == nil ? frames[index * frames.count / iterations] : frames[index % frames.count]
+            if interval > 0 { try await Task.sleep(for: .milliseconds(interval)) }
             let elapsed = try clock.measure { hands = try provider.hands(in: frame) }
             inference.append(milliseconds(elapsed))
             detected += hands.isEmpty ? 0 : 1

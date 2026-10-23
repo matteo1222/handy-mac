@@ -52,7 +52,7 @@ public enum HandBackend: String, Sendable, CaseIterable {
         switch self {
         case .vision: VisionHandPoseProvider()
         case .coreml:
-            (try? CoreMLHandPoseProvider(computeUnits: live ? Self.liveComputeUnits : .all))
+            (try? CoreMLHandPoseProvider(computeUnits: live ? Self.liveComputeUnits : .all, backgroundDetection: live))
                 ?? VisionHandPoseProvider()
         }
     }

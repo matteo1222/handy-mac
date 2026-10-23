@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:38'
-updated_date: '2026-10-22 03:18'
+updated_date: '2026-10-23 03:09'
 labels:
   - ready-for-human
 milestone: m-0
@@ -45,6 +45,8 @@ Bench on identical real clips (4 Commons videos via scripts/fetch-videos.sh, eac
 Decision (decision-3, 2026-10-22): Core ML (MediaPipe) is the default backend, Vision the automatic fallback; thumb-index pinch stays the default click (index dip remains a setting). Evidence: bench-perception with Handy stopped, Core ML p50 1.5 / p95 4.7 ms, Vision p50 2.6 / p95 2.8 ms (both inside 10 ms); real video clips Core ML p50 1.1-2.2 / p95 3.4-5.2 vs Vision 6.1-7.3 / 7.8-10.5; camera-format YUV frames paced at 30 fps Core ML p50 5.7-6.8 vs Vision 10-14 with a hand. Fixed on the way: Core ML handedness was inverted (agreed with Vision on 15% of matched hands, 85% after the flip, 94% on the single-signer clip), and the palm-detector decode now reads only the score column (no-hand frame in debug 21 -> 7.7 ms). Known gaps: inside the running app both backends sit at ~24 ms per idle frame (a contention floor, not the models; follow-up), and MediaPipe gives no per-joint confidence, so the low-confidence-tip guard does not fire on Core ML.
 
 Real-footage false actions, same two worst clips, with the plausibility and palm-side gates: Core ML royal-society 46/h, css-podcast 0/h; Vision 63/h and 0/h. Supports decision-3.
+
+In-app inference floor follow-up (4fd30c0): cause isolated on an M3. The camera stream itself keeps the Neural Engine busy ~20 ms after each frame arrives (Handy with camera on and no inference inflates an external paced ANE bench as much as full Handy; delaying inference d ms after arrival cuts it by ~d); face detector, HUD, mean luma, camera format/scaling, mirroring and video effects were each ruled out. Also, any paced inference is cold: offline at 33 ms spacing Core ML is p50 8 / p95 23 vs 1.8 / 5.8 back-to-back, so the back-to-back bench overstates live numbers (use bench-perception --interval 33). Fix: live camera runs Core ML on .cpuAndGPU (HandBackend.liveComputeUnits); release app 30 fps no hand p50/p95 20.4/22.7 -> 12.6/13.3 ms. Still over the 10 ms p95 budget: the remaining ~12.5 ms matches GPU paced offline (clock ramp-up, not contention). Not measured with a real hand in view.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
