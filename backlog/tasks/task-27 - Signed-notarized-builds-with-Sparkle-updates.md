@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-19 15:39'
-updated_date: '2026-10-20 15:21'
+updated_date: '2026-10-23 10:43'
 labels:
   - ready-for-human
 milestone: m-2
@@ -52,4 +52,6 @@ Done and verified: Sparkle 2.10.0 embedded (otool shows @rpath/Sparkle.framework
 App Intents metadata extraction is now part of package-app.sh (resolves the TASK-21 note).
 
 Local Developer ID signing attempted (OUT_DIR=.build/release-app APP_IDENTITY='Developer ID Application: <name> (<team id>)' scripts/package-app.sh release): macOS asks keychain permission once per codesign call (one per nested Sparkle helper), so it was stopped. To run locally, grant codesign access to the Developer ID key once (Keychain Access › key › Access Control) or sign in CI with an imported keychain. Notarization still needs a notarytool profile (none in the keychain).
+
+2026-10-23: local release proven. Notary profile 'handy' stored, Developer ID key usable by codesign, Sparkle EdDSA keys generated (private key in the login keychain; public key 1YMFy6B96W1xKk80RUCHrAZiLlx+CIHVm3lBEEnFrFo=). scripts/sign-and-notarize.sh built, signed, notarized (submission accepted), stapled; spctl: accepted, source=Notarized Developer ID. Fixed on the way: Sparkle's Autoupdate went unsigned (find -H) and notarytool rejections now fail the script with Apple's log. Remaining for AC1/AC2: the release environment's GitHub secrets (DEVELOPER_ID_P12 + password, NOTARY_*, SPARKLE_PRIVATE_KEY/PUBLIC_KEY), then a v0.1.0 tag to prove the workflow and appcast end to end.
 <!-- SECTION:NOTES:END -->
