@@ -27,9 +27,15 @@ public struct HandTracker: Sendable {
         public subscript(joint: Joint) -> Point? { joints[joint.rawValue] }
     }
 
+    /// Frames a different left/right label must hold before a track changes hands. Trackers mislabel
+    /// single frames (MediaPipe on about one in six), and the label decides which side of the hand
+    /// faces the camera, so a one-frame flip made an open palm abort arming.
+    static let chiralityHold = 6
+
     private struct State: Sendable {
         let id: Int
         var chirality: Chirality
+        var contrary = 0
         var wrist: Point
         var lastSeen: Double
         var filters: [PointFilter]
@@ -57,7 +63,15 @@ public struct HandTracker: Sendable {
             var state: State
             if let index = nearest(to: wrist, in: unclaimed) {
                 state = unclaimed.remove(at: index)
-                state.chirality = hand.chirality
+                if hand.chirality == state.chirality {
+                    state.contrary = 0
+                } else {
+                    state.contrary += 1
+                    if state.contrary >= Self.chiralityHold {
+                        state.chirality = hand.chirality
+                        state.contrary = 0
+                    }
+                }
             } else {
                 state = State(
                     id: nextID, chirality: hand.chirality, wrist: wrist, lastSeen: t,
