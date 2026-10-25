@@ -6,6 +6,8 @@
 #
 # gestures/<Gesture case>.lmk is required for every Gesture case (see ReplayTests).
 # scenarios/<name>.lmk holds negative and edge cases.
+# scenarios/realRightAndLeftClicks.lmk is a recorded real hand, not synthesised: regen leaves it alone, so
+# re-bless its events by hand (handyctl replay <clip> --write-expected <clip>.events.json) after reviewing them.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 MODE=${1:-check}
