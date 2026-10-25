@@ -30,12 +30,12 @@ private struct Driver {
     #expect(driver.frame(index: 0.5) == [.click(button: .left, count: 1)])
 }
 
-@Test func movingPastEightPointsStartsADragCarryingTheHeldMotion() {
+@Test func movingPastTheDragDistanceStartsADragCarryingTheHeldMotion() {
     var driver = Driver()
     _ = driver.frame(index: 0.2)
-    _ = driver.frame(index: 0.2, move: Point(x: 5, y: 0))
-    let events = driver.frame(index: 0.2, move: Point(x: 5, y: 0))
-    #expect(events == [.dragBegan(button: .left), .dragMoved(dx: 10, dy: 0)])
+    _ = driver.frame(index: 0.2, move: Point(x: 20, y: 0))
+    let events = driver.frame(index: 0.2, move: Point(x: 20, y: 0))
+    #expect(events == [.dragBegan(button: .left), .dragMoved(dx: 40, dy: 0)])
     #expect(driver.frame(index: 0.2, move: Point(x: 2, y: 1)) == [.dragMoved(dx: 2, dy: 1)])
     #expect(driver.frame(index: 0.5) == [.dragEnded(button: .left)])
 }
@@ -43,8 +43,20 @@ private struct Driver {
 @Test func holdingPastTheClickWindowStartsADrag() {
     var driver = Driver()
     _ = driver.frame(index: 0.2)
-    let events = (0..<9).flatMap { _ in driver.frame(index: 0.2) }
+    let events = (0..<20).flatMap { _ in driver.frame(index: 0.2) }
     #expect(events == [.dragBegan(button: .left)])
+}
+
+/// From a front camera a thumb-middle pinch reads as the index touching the thumb with the middle tip
+/// close but unsure (or gone); that is a right click. A left click keeps the middle tip far.
+@Test func indexPinchWithTheMiddleTipNearOrHiddenIsARightClick() {
+    for (middleNear, button) in [(0.2, MouseButton.right), (nil, .right), (0.7, .left)] as [(Double?, MouseButton)] {
+        var clicks = ClickRecognizer(settings: ClickSettings())
+        _ = clicks.update(pinchIndex: 0.15, pinchMiddle: nil, delta: nil, palm: .zero, at: 0, middleNear: middleNear)
+        let events = clicks.update(
+            pinchIndex: 0.5, pinchMiddle: nil, delta: nil, palm: .zero, at: 0.2, middleNear: middleNear)
+        #expect(events == [.click(button: button, count: 1)], "middle tip at \(String(describing: middleNear))")
+    }
 }
 
 @Test func secondQuickPressIsADoubleClickAndASlowOneIsNot() {

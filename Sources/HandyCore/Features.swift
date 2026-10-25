@@ -44,6 +44,9 @@ public struct HandFeatures: Sendable, Hashable {
     public var pinchIndex: Double?
     /// Thumb tip to middle tip / scale, with the same confidence rule.
     public var pinchMiddle: Double?
+    /// Thumb tip to middle tip / scale at any confidence the tracker kept, nil when either is missing:
+    /// in a thumb-middle pinch the thumb hides the middle tip, so `pinchMiddle` is nil exactly then.
+    public var middleNearThumb: Double?
     /// How far each tip reaches past its base joint, measured from the wrist, / scale.
     /// About 0.7 to 1.0 when straight, near or below 0 when curled.
     public var reach: FingerValues
@@ -159,6 +162,9 @@ public struct FeatureExtractor: Sendable {
             scale: scale,
             pinchIndex: pinch(.indexTip),
             pinchMiddle: pinch(.middleTip),
+            middleNearThumb: track[.thumbTip].flatMap { thumb in
+                track[.middleTip].map { thumb.distance(to: $0) / scale }
+            },
             reach: FingerValues { finger in
                 guard let base = point(finger.base), let end = track[finger.tip] else { return 0 }
                 return (wrist.distance(to: end) - wrist.distance(to: base)) / scale

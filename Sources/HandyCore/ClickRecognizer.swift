@@ -23,13 +23,20 @@ public struct ClickSettings: Sendable, Hashable, Codable {
     public var release = 0.40
     /// Pinch distance at which the cursor ring starts to tighten.
     public var previewStart = 0.6
-    /// A release within this long, and under `dragDistance` of motion, is a click.
-    public var clickMaxDuration = 0.25
-    /// Points of hand motion during a press that start a drag.
-    public var dragDistance = 8.0
+    /// A release within this long, and under `dragDistance` of motion, is a click. Real pinches held
+    /// 0.3 to 0.5 s; at 0.25 s they all became drags.
+    public var clickMaxDuration = 0.6
+    /// Points of hand motion during a press that start a drag. A held real pinch shifts the tracked
+    /// palm 5 to 22 points as the fingers fold; a deliberate drag moves hundreds.
+    public var dragDistance = 30.0
     /// A second press within this long after a click, and within `doubleClickDistance`, counts up.
     public var doubleClickInterval = 0.35
     public var doubleClickDistance = 12.0
+    /// A thumb-index pinch whose middle fingertip is also this close to the thumb (hand scales, any
+    /// confidence) is a right click. From a front camera the thumb hides the middle tip in a
+    /// thumb-middle pinch, so the tracker reports the index touching the thumb, the middle tip close
+    /// but unsure. A real left click keeps the middle tip far (0.6 or more) and plainly visible.
+    public var middleNear = 0.35
     /// A pinch only starts when its finger reaches out at least this far (`HandFeatures.reach`).
     /// A thumb resting on a finger curled into the palm is not a pinch.
     public var minFingerReach = 0.25
@@ -46,11 +53,13 @@ public struct ClickRecognizer: Sendable, Equatable {
     public enum Phase: Sendable, Equatable {
         case idle
         case pressing(Press)
-        case dragging(MouseButton)
+        case dragging(MouseButton, Finger)
     }
 
     public struct Press: Sendable, Equatable {
         public var button: MouseButton
+        /// The finger whose pinch started the press, and whose opening releases it.
+        public var finger: Finger
         public var since: Double
         /// Raw palm position at press, in points.
         public var origin: Point
@@ -87,22 +96,24 @@ public struct ClickRecognizer: Sendable, Equatable {
     /// catching up after the hand stops to aim.
     public mutating func update(
         pinchIndex: Double?, pinchMiddle: Double?, delta: Point?, palm: Point, at t: Double,
-        reach: FingerValues? = nil
+        reach: FingerValues? = nil, middleNear: Double? = .infinity
     ) -> [Engine.Event] {
         let motion = delta ?? .zero
         switch phase {
         case .idle:
             let index = reach.map { $0.index >= settings.minFingerReach } ?? true ? pinchIndex : nil
             let middle = reach.map { $0.middle >= settings.minFingerReach } ?? true ? pinchMiddle : nil
-            if let button = pressedButton(pinchIndex: index, pinchMiddle: middle) {
+            if let (button, finger) = pressed(pinchIndex: index, pinchMiddle: middle, middleNear: middleNear) {
                 phase = .pressing(
-                    Press(button: button, since: t, origin: palm, motion: .zero, count: nextCount(for: button, at: t)))
+                    Press(
+                        button: button, finger: finger, since: t, origin: palm, motion: .zero,
+                        count: nextCount(for: button, at: t)))
                 return []
             }
             return idleMotion(motion, at: t)
 
         case .pressing(var press):
-            if isReleased(press.button, pinchIndex: pinchIndex, pinchMiddle: pinchMiddle) {
+            if isReleased(press.finger, pinchIndex: pinchIndex, pinchMiddle: pinchMiddle) {
                 phase = .idle
                 lastClick = LastClick(button: press.button, releasedAt: t, motion: .zero, count: press.count)
                 return [.click(button: press.button, count: press.count)]
@@ -110,7 +121,7 @@ public struct ClickRecognizer: Sendable, Equatable {
             press.motion += motion
             let travel = palm.distance(to: press.origin)
             if travel > settings.dragDistance || t - press.since > settings.clickMaxDuration {
-                phase = .dragging(press.button)
+                phase = .dragging(press.button, press.finger)
                 lastClick = nil
                 let held = press.motion
                 return [.dragBegan(button: press.button)] + (held == .zero ? [] : [.dragMoved(dx: held.x, dy: held.y)])
@@ -118,8 +129,8 @@ public struct ClickRecognizer: Sendable, Equatable {
             phase = .pressing(press)
             return []
 
-        case .dragging(let button):
-            if isReleased(button, pinchIndex: pinchIndex, pinchMiddle: pinchMiddle) {
+        case .dragging(let button, let finger):
+            if isReleased(finger, pinchIndex: pinchIndex, pinchMiddle: pinchMiddle) {
                 phase = .idle
                 return [.dragEnded(button: button)]
             }
@@ -133,7 +144,7 @@ public struct ClickRecognizer: Sendable, Equatable {
             phase = .idle
             lastClick = nil
         }
-        if case .dragging(let button) = phase { return [.dragEnded(button: button)] }
+        if case .dragging(let button, _) = phase { return [.dragEnded(button: button)] }
         return []
     }
 
@@ -143,7 +154,7 @@ public struct ClickRecognizer: Sendable, Equatable {
             phase = .idle
             lastClick = nil
         }
-        if case .dragging(let button) = phase { return [.dragEnded(button: button)] }
+        if case .dragging(let button, _) = phase { return [.dragEnded(button: button)] }
         return []
     }
 
@@ -169,15 +180,21 @@ public struct ClickRecognizer: Sendable, Equatable {
         return min(last.count + 1, 3)
     }
 
-    private func pressedButton(pinchIndex: Double?, pinchMiddle: Double?) -> MouseButton? {
-        if let index = pinchIndex, index < settings.press { return .left }
-        if let middle = pinchMiddle, middle < settings.press { return .right }
+    /// The button and the finger that pressed it. A thumb-index pinch is a right click when the middle
+    /// tip is near the thumb too, or hidden (nil: the thumb covers it); `middleNear` is infinite when
+    /// there is no such reading to use (index-dip mode).
+    private func pressed(pinchIndex: Double?, pinchMiddle: Double?, middleNear: Double?) -> (MouseButton, Finger)? {
+        if let index = pinchIndex, index < settings.press {
+            let right = middleNear.map { $0 < settings.middleNear } ?? true
+            return (right ? .right : .left, .index)
+        }
+        if let middle = pinchMiddle, middle < settings.press { return (.right, .middle) }
         return nil
     }
 
     /// Released only on a confident reading above the band; a missing reading holds the press.
-    private func isReleased(_ button: MouseButton, pinchIndex: Double?, pinchMiddle: Double?) -> Bool {
-        let pinch = button == .left ? pinchIndex : pinchMiddle
+    private func isReleased(_ finger: Finger, pinchIndex: Double?, pinchMiddle: Double?) -> Bool {
+        let pinch = finger == .index ? pinchIndex : pinchMiddle
         return pinch.map { $0 > settings.release } ?? false
     }
 }
@@ -190,6 +207,9 @@ public struct ClickSignals: Sendable, Equatable {
     public var middle: Double?
     /// Finger reach for gating pinches; nil in dip mode, where the reach is the signal itself.
     public var reach: FingerValues?
+    /// The middle tip's distance from the thumb at any confidence (nil when the tracker lost it);
+    /// infinite in dip mode, which tells the buttons apart by finger instead.
+    public var middleNear: Double? = .infinity
 
     public init(_ hand: HandFeatures, settings: ClickSettings) {
         switch settings.gesture {
@@ -197,6 +217,7 @@ public struct ClickSignals: Sendable, Equatable {
             index = hand.pinchIndex
             middle = hand.pinchMiddle
             reach = hand.reach
+            middleNear = hand.middleNearThumb
         case .indexDip:
             // Map reach so dipPress lands on press and dipRelease on release. Like a pinch, a dip is never
             // read from a fingertip the model is unsure of.

@@ -222,7 +222,8 @@ public struct Engine: Sendable {
         return events
             + engaged.clicks.update(
                 pinchIndex: signals.index, pinchMiddle: signals.middle, delta: step.cursor,
-                palm: hand.palmCentroid * settings.pointer.slowGain, at: t, reach: signals.reach)
+                palm: hand.palmCentroid * settings.pointer.slowGain, at: t, reach: signals.reach,
+                middleNear: signals.middleNear)
     }
 
     /// Clearly index and middle up, ring and little curled. The margins keep a relaxed hand, whose
